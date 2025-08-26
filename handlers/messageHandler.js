@@ -7,7 +7,7 @@ const trainingHandler = require('./trainingHandler');
 const escalationHandler = require('./escalationHandler');
 const { pool } = require('../config/database');
 
-// Database session management for PostgreSQL
+// Database session management
 async function getSession(userNumber) {
     try {
         const result = await pool.query(
@@ -35,49 +35,12 @@ async function saveSession(userNumber, sessionData) {
 async function handleMessage(message, senderNumber) {
     console.log('🔄 Processing message:', message, 'from:', senderNumber);
     
-    // Reset command for testing
+    // Reset command
     if (message.toLowerCase().trim() === 'reset') {
         console.log('🔄 Resetting user session');
         await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);
         sendGreeting(senderNumber);
         await saveSession(senderNumber, { step: 'select_region' });
-        return;
-    }
-    
-    // Back to store selection command
-    if (message.toLowerCase().trim() === 'back to store' || message.toLowerCase().trim() === 'change store') {
-        const userSession = await getSession(senderNumber);
-        userSession.step = 'select_region';
-        delete userSession.selectedRegion;
-        delete userSession.selectedStore;
-        sendGreeting(senderNumber);
-        await saveSession(senderNumber, userSession);
-        return;
-    }
-    
-    // Check my queries command
-    if (message.toLowerCase().trim() === 'my queries') {
-        const QueryModel = require('../models/queries');
-        const queries = await QueryModel.getQueryByNumber(senderNumber);
-        
-        if (queries.length === 0) {
-            sendMessage(senderNumber, 'You have no previous queries.');
-        } else {
-            let queryList = '📋 Your Recent Queries:\n\n';
-            queries.forEach(query => {
-                const statusEmoji = query.status === 'completed' ? '✅' : 
-                                  query.status === 'rejected' ? '❌' : '⏳';
-                queryList += `${statusEmoji} Query #${query.query_id}\n`;
-                queryList += `Type: ${query.query_type}\n`;
-                queryList += `Status: ${query.status}\n`;
-                queryList += `Date: ${new Date(query.created_at).toLocaleDateString()}\n`;
-                if (query.team_response) {
-                    queryList += `Response: ${query.team_response}\n`;
-                }
-                queryList += '\n---\n\n';
-            });
-            sendMessage(senderNumber, queryList);
-        }
         return;
     }
     
@@ -142,7 +105,7 @@ async function handleMessage(message, senderNumber) {
             break;
             
         default:
-            console.log('🔄 Unknown step, starting over with greeting');
+            console.log('🔄 Unknown step, starting over');
             sendGreeting(senderNumber);
             userSession.step = 'select_region';
     }
@@ -155,17 +118,15 @@ function sendGreeting(senderNumber) {
     
     const greeting = `Hi! 👋 How can I help you today?
 
-Please select your region:
-1. Central
-2. RTB  
-3. Welkom
+Select Region:
+- Central
+- RTB
+- Welkom
 
-Type the number of your region (1-3):
-
-ℹ️ Commands:
-• Type "my queries" to check your query status
-• Type "back to store" to change store
-• Type "reset" to start over`;
+Please type:
+1 for Central
+2 for RTB  
+3 for Welkom`;
     
     sendMessage(senderNumber, greeting);
 }
@@ -195,8 +156,7 @@ async function handleRegionSelection(message, senderNumber, userSession) {
             break;
         default:
             console.log('❌ Invalid region choice:', choice);
-            sendMessage(senderNumber, 'Please select a valid region (1-3)');
-            sendGreeting(senderNumber);
+            sendMessage(senderNumber, 'Please select a valid region:\n1 for Central\n2 for RTB\n3 for Welkom');
     }
 }
 
@@ -241,16 +201,18 @@ function showMainMenu(senderNumber) {
     console.log('📋 Showing main menu to:', senderNumber);
     
     const menu = `Main Menu:
+- Query
+- Over Sale Approval
+- Request Document
+- Training
+- Escalation
 
-1️⃣ Query
-2️⃣ Over Sale Approval
-3️⃣ Request Document
-4️⃣ Training
-5️⃣ Escalation
-
-Type the number of your choice (1-5):
-
-💡 Tip: Type "back to store" to change store`;
+Please type:
+1 for Query
+2 for Over Sale Approval
+3 for Request Document
+4 for Training
+5 for Escalation`;
     
     sendMessage(senderNumber, menu);
 }
