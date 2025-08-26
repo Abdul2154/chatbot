@@ -33,8 +33,11 @@ async function saveSession(userNumber, sessionData) {
 }
 
 async function handleMessage(message, senderNumber) {
+    console.log('🔄 Processing message:', message, 'from:', senderNumber);
+    
     // Reset command for testing
     if (message.toLowerCase().trim() === 'reset') {
+        console.log('🔄 Resetting user session');
         await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);
         sendGreeting(senderNumber);
         await saveSession(senderNumber, { step: 'select_region' });
@@ -79,54 +82,67 @@ async function handleMessage(message, senderNumber) {
     }
     
     const userSession = await getSession(senderNumber);
+    console.log('👤 User session step:', userSession.step);
     
     switch (userSession.step) {
         case 'greeting':
+            console.log('👋 Sending greeting to new user');
             sendGreeting(senderNumber);
             userSession.step = 'select_region';
             break;
             
         case 'select_region':
+            console.log('🌍 Handling region selection:', message);
             await handleRegionSelection(message, senderNumber, userSession);
             break;
             
         case 'select_store':
+            console.log('🏪 Handling store selection:', message);
             await storeHandler.handleStoreSelection(message, senderNumber, userSession);
             break;
             
         case 'main_menu':
+            console.log('📋 Handling main menu selection:', message);
             await handleMainMenu(message, senderNumber, userSession);
             break;
             
         case 'query':
+            console.log('❓ Handling query selection:', message);
             await queryHandler.handleQuery(message, senderNumber, userSession);
             break;
             
         case 'query_details':
+            console.log('📝 Handling query details:', message);
             await queryHandler.handleQueryDetails(message, senderNumber, userSession);
             break;
             
         case 'approval':
+            console.log('✅ Handling approval:', message);
             await approvalHandler.handleApproval(message, senderNumber, userSession);
             break;
             
         case 'document':
+            console.log('📄 Handling document selection:', message);
             await documentHandler.handleDocument(message, senderNumber, userSession);
             break;
             
         case 'document_details':
+            console.log('📋 Handling document details:', message);
             await documentHandler.handleDocumentDetails(message, senderNumber, userSession);
             break;
             
         case 'training':
+            console.log('🎓 Handling training selection:', message);
             await trainingHandler.handleTraining(message, senderNumber, userSession);
             break;
             
         case 'escalation':
+            console.log('🚨 Handling escalation:', message);
             await escalationHandler.handleEscalation(message, senderNumber, userSession);
             break;
             
         default:
+            console.log('🔄 Unknown step, starting over with greeting');
             sendGreeting(senderNumber);
             userSession.step = 'select_region';
     }
@@ -135,6 +151,8 @@ async function handleMessage(message, senderNumber) {
 }
 
 function sendGreeting(senderNumber) {
+    console.log('👋 Sending greeting to:', senderNumber);
+    
     const greeting = `Hi! 👋 How can I help you today?
 
 Please select your region:
@@ -154,24 +172,29 @@ Type the number of your region (1-3):
 
 async function handleRegionSelection(message, senderNumber, userSession) {
     const choice = message.trim();
+    console.log('🌍 Region choice:', choice);
     
     switch (choice) {
         case '1':
+            console.log('🌍 Selected Central region');
             userSession.selectedRegion = 'central';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'central');
             break;
         case '2':
+            console.log('🌍 Selected RTB region');
             userSession.selectedRegion = 'rtb';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'rtb');
             break;
         case '3':
+            console.log('🌍 Selected Welkom region');
             userSession.selectedRegion = 'welkom';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'welkom');
             break;
         default:
+            console.log('❌ Invalid region choice:', choice);
             sendMessage(senderNumber, 'Please select a valid region (1-3)');
             sendGreeting(senderNumber);
     }
@@ -179,35 +202,44 @@ async function handleRegionSelection(message, senderNumber, userSession) {
 
 async function handleMainMenu(message, senderNumber, userSession) {
     const choice = message.trim();
+    console.log('📋 Main menu choice:', choice);
     
     switch (choice) {
         case '1':
+            console.log('❓ Selected Query');
             userSession.step = 'query';
             queryHandler.showQueryOptions(senderNumber);
             break;
         case '2':
+            console.log('✅ Selected Over Sale Approval');
             userSession.step = 'approval';
             approvalHandler.showApprovalForm(senderNumber);
             break;
         case '3':
+            console.log('📄 Selected Request Document');
             userSession.step = 'document';
             documentHandler.showDocumentOptions(senderNumber);
             break;
         case '4':
+            console.log('🎓 Selected Training');
             userSession.step = 'training';
             trainingHandler.showTrainingOptions(senderNumber);
             break;
         case '5':
+            console.log('🚨 Selected Escalation');
             userSession.step = 'escalation';
             escalationHandler.showEscalationForm(senderNumber);
             break;
         default:
+            console.log('❌ Invalid main menu choice:', choice);
             sendMessage(senderNumber, 'Please select a valid option (1-5)');
             showMainMenu(senderNumber);
     }
 }
 
 function showMainMenu(senderNumber) {
+    console.log('📋 Showing main menu to:', senderNumber);
+    
     const menu = `Main Menu:
 
 1️⃣ Query
