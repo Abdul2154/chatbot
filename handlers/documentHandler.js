@@ -5,13 +5,13 @@ function showDocumentOptions(senderNumber) {
     const message = `REQUEST DOCUMENT
 Which document do you need?
 
-1. TD Document
-2. GRN Statement  
-3. Stock Sheet
-4. Leave Form
-5. TD Statement Report
+1. TD Document (Allow image upload)
+2. GRN Statement (Allow image upload)
+3. Stock Sheet (Notify Head Office)
+4. Leave Form (Send preloaded downloadable PDF)
+5. TD Statement Report (Submit formal request)
 
-Type the number of your choice (1-5):`;
+Please type the number (1-5):`;
     
     sendMessage(senderNumber, message);
 }
@@ -23,57 +23,57 @@ async function handleDocument(message, senderNumber, userSession) {
         case '1':
             userSession.documentType = 'td_document';
             userSession.step = 'document_details';
-            sendMessage(senderNumber, `📄 TD DOCUMENT REQUEST
+            sendMessage(senderNumber, `📄 TD DOCUMENT
 
-Please provide the following information (separate each field with a new line):
+You can upload an image if needed.
 
-1. Employee Name:
-2. Store:
-3. Contact Number:
+Please provide the following information (one per line):
+- Employee Name
+- Store
+- Contact Number
 
 Example:
 John Smith
 Doornkop
-0123456789
-
-Note: You can upload supporting images if needed.`);
+0123456789`);
             break;
+            
         case '2':
             userSession.documentType = 'grn_statement';
             userSession.step = 'document_details';
-            sendMessage(senderNumber, `📊 GRN STATEMENT REQUEST
+            sendMessage(senderNumber, `📊 GRN STATEMENT
 
-Please provide the following information (separate each field with a new line):
+You can upload an image if needed.
 
-1. Employee Name:
-2. Store:
-3. Contact Number:
+Please provide the following information (one per line):
+- Employee Name
+- Store
+- Contact Number
 
 Example:
 John Smith
 Doornkop
-0123456789
-
-Note: You can upload supporting images if needed.`);
+0123456789`);
             break;
+            
         case '3':
             userSession.documentType = 'stock_sheet';
             userSession.step = 'document_details';
-            sendMessage(senderNumber, `📋 STOCK SHEET REQUEST
+            sendMessage(senderNumber, `📋 STOCK SHEET
 
-Please provide the following information (separate each field with a new line):
+Head Office will be notified.
 
-1. Employee Name:
-2. Store:
-3. Contact Number:
+Please provide the following information (one per line):
+- Employee Name
+- Store
+- Contact Number
 
 Example:
 John Smith
 Doornkop
-0123456789
-
-Note: This will be sent to Head Office.`);
+0123456789`);
             break;
+            
         case '4':
             try {
                 const queryId = await QueryModel.createQuery(
@@ -81,38 +81,44 @@ Note: This will be sent to Head Office.`);
                     userSession.selectedRegion,
                     userSession.selectedStore,
                     'leave_form',
-                    { request_type: 'leave_form', store: userSession.selectedStore }
+                    { 
+                        document_type: 'leave_form',
+                        action: 'send_preloaded_downloadable_pdf'
+                    }
                 );
                 
-                sendMessage(senderNumber, `📝 LEAVE FORM REQUEST
+                sendMessage(senderNumber, `📝 LEAVE FORM
 
 Query ID: #${queryId}
 
-A downloadable PDF will be sent to you shortly.`);
+A preloaded downloadable PDF will be sent to you shortly.
+
+Thank you!`);
             } catch (error) {
                 console.error('Error submitting leave form request:', error);
                 sendMessage(senderNumber, 'Sorry, there was an error processing your request. Please try again later.');
             }
             userSession.step = 'main_menu';
             break;
+            
         case '5':
-            userSession.documentType = 'td_statement';
+            userSession.documentType = 'td_statement_report';
             userSession.step = 'document_details';
             sendMessage(senderNumber, `📈 TD STATEMENT REPORT
 
-Please provide the following information (separate each field with a new line):
+Formal request will be submitted.
 
-1. Employee Name:
-2. Store:
-3. Contact Number:
+Please provide the following information (one per line):
+- Employee Name
+- Store
+- Contact Number
 
 Example:
 John Smith
 Doornkop
-0123456789
-
-Note: Formal request will be submitted.`);
+0123456789`);
             break;
+            
         default:
             sendMessage(senderNumber, 'Please select a valid option (1-5)');
     }
@@ -123,11 +129,11 @@ async function handleDocumentDetails(message, senderNumber, userSession) {
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
     
     if (lines.length < 3) {
-        sendMessage(senderNumber, `❌ Please provide all required information in the correct format:
+        sendMessage(senderNumber, `❌ Please provide all required information:
 
-1. Employee Name:
-2. Store:
-3. Contact Number:
+- Employee Name
+- Store
+- Contact Number
 
 Example:
 John Smith
@@ -139,7 +145,8 @@ Doornkop
     const documentData = {
         employee_name: lines[0],
         store: lines[1],
-        contact_number: lines[2]
+        contact_number: lines[2],
+        document_type: userSession.documentType
     };
     
     try {
@@ -152,22 +159,19 @@ Doornkop
         );
         
         const docTypes = {
-            'td_document': 'TD Document',
-            'grn_statement': 'GRN Statement',
-            'stock_sheet': 'Stock Sheet',
-            'td_statement': 'TD Statement Report'
+            'td_document': 'TD Document (image upload allowed)',
+            'grn_statement': 'GRN Statement (image upload allowed)',
+            'stock_sheet': 'Stock Sheet (Head Office notified)',
+            'td_statement_report': 'TD Statement Report (formal request)'
         };
         
         sendMessage(senderNumber, `✅ ${docTypes[userSession.documentType]} request submitted successfully!
 
 Query ID: #${queryId}
 
-📋 Submitted Details:
-- Employee: ${documentData.employee_name}
-- Store: ${documentData.store}
-- Contact: ${documentData.contact_number}
+You will receive your document shortly.
 
-You will receive it shortly.`);
+Thank you!`);
         
         userSession.step = 'main_menu';
         delete userSession.documentData;
