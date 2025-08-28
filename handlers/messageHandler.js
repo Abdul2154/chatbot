@@ -6,8 +6,9 @@ const documentHandler = require('./documentHandler');
 const trainingHandler = require('./trainingHandler');
 const escalationHandler = require('./escalationHandler');
 const { pool } = require('../config/database');
+const { downloadAndUploadFromTwilio } = require('../config/cloudinary');
 
-// Database session management for PostgreSQL
+// Database session management
 async function getSession(userNumber) {
     try {
         const result = await pool.query(
@@ -32,101 +33,100 @@ async function saveSession(userNumber, sessionData) {
     }
 }
 
-async function handleMessage(message, senderNumber) {
-    // Reset command for testing
+async function handleMessage(message, senderNumber, mediaUrl = null, mediaContentType = null) {
+    console.log('🔄 Processing message:', message, 'from:', senderNumber);
+    
+    if (mediaUrl) {
+        console.log('📷 Image received:', mediaUrl);
+    }
+    
+    // Reset command
     if (message.toLowerCase().trim() === 'reset') {
+        console.log('🔄 Resetting user session');
         await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);
         sendGreeting(senderNumber);
         await saveSession(senderNumber, { step: 'select_region' });
         return;
     }
     
-    // Back to store selection command
-    if (message.toLowerCase().trim() === 'back to store' || message.toLowerCase().trim() === 'change store') {
-        const userSession = await getSession(senderNumber);
-        userSession.step = 'select_region';
-        delete userSession.selectedRegion;
-        delete userSession.selectedStore;
-        sendGreeting(senderNumber);
-        await saveSession(senderNumber, userSession);
-        return;
-    }
-    
-    // Check my queries command
-    if (message.toLowerCase().trim() === 'my queries') {
-        const QueryModel = require('../models/queries');
-        const queries = await QueryModel.getQueryByNumber(senderNumber);
-        
-        if (queries.length === 0) {
-            sendMessage(senderNumber, 'You have no previous queries.');
-        } else {
-            let queryList = '📋 Your Recent Queries:\n\n';
-            queries.forEach(query => {
-                const statusEmoji = query.status === 'completed' ? '✅' : 
-                                  query.status === 'rejected' ? '❌' : '⏳';
-                queryList += `${statusEmoji} Query #${query.query_id}\n`;
-                queryList += `Type: ${query.query_type}\n`;
-                queryList += `Status: ${query.status}\n`;
-                queryList += `Date: ${new Date(query.created_at).toLocaleDateString()}\n`;
-                if (query.team_response) {
-                    queryList += `Response: ${query.team_response}\n`;
-                }
-                queryList += '\n---\n\n';
-            });
-            sendMessage(senderNumber, queryList);
-        }
-        return;
-    }
-    
     const userSession = await getSession(senderNumber);
+    console.log('👤 User session step:', userSession.step);
+    
+    // Handle image upload for certain steps
+    if (mediaUrl && (userSession.step === 'query_details' || userSession.step === 'approval' || userSession.step === 'document_details')) {
+        try {
+            const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_image`;
+            const uploadResult = await downloadAndUploadFromTwilio(mediaUrl, fileName);
+            
+            userSession.imageUrl = uploadResult.url;
+            userSession.imagePublicId = uploadResult.public_id;
+            
+            sendMessage(senderNumber, '📷 Image received and uploaded successfully! Please continue with your request.');
+        } catch (error) {
+            console.error('Error processing image:', error);
+            sendMessage(senderNumber, '❌ Sorry, there was an error processing your image. Please continue with your request.');
+        }
+    }
     
     switch (userSession.step) {
         case 'greeting':
+            console.log('👋 Sending greeting to new user');
             sendGreeting(senderNumber);
             userSession.step = 'select_region';
             break;
             
         case 'select_region':
+            console.log('🌍 Handling region selection:', message);
             await handleRegionSelection(message, senderNumber, userSession);
             break;
             
         case 'select_store':
+            console.log('🏪 Handling store selection:', message);
             await storeHandler.handleStoreSelection(message, senderNumber, userSession);
             break;
             
         case 'main_menu':
+            console.log('📋 Handling main menu selection:', message);
             await handleMainMenu(message, senderNumber, userSession);
             break;
             
         case 'query':
+            console.log('❓ Handling query selection:', message);
             await queryHandler.handleQuery(message, senderNumber, userSession);
             break;
             
         case 'query_details':
+            console.log('📝 Handling query details:', message);
             await queryHandler.handleQueryDetails(message, senderNumber, userSession);
             break;
             
         case 'approval':
+            console.log('✅ Handling approval:', message);
             await approvalHandler.handleApproval(message, senderNumber, userSession);
             break;
             
         case 'document':
+            console.log('📄 Handling document selection:', message);
             await documentHandler.handleDocument(message, senderNumber, userSession);
             break;
             
         case 'document_details':
+            console.log('📋 Handling document details:', message);
             await documentHandler.handleDocumentDetails(message, senderNumber, userSession);
             break;
             
         case 'training':
+            console.log('🎓 Handling training selection:', message);
             await trainingHandler.handleTraining(message, senderNumber, userSession);
             break;
             
         case 'escalation':
+            console.log('🚨 Handling escalation:', message);
             await escalationHandler.handleEscalation(message, senderNumber, userSession);
             break;
             
         default:
+            console.log('🔄 Unknown step, starting over');
             sendGreeting(senderNumber);
             userSession.step = 'select_region';
     }
@@ -135,90 +135,109 @@ async function handleMessage(message, senderNumber) {
 }
 
 function sendGreeting(senderNumber) {
+    console.log('👋 Sending greeting to:', senderNumber);
+    
     const greeting = `Hi! 👋 How can I help you today?
 
-Please select your region:
-1. Central
-2. RTB  
-3. Welkom
+Select Region:
+- Central
+- RTB
+- Welkom
 
-Type the number of your region (1-3):
+Please type:
+1 for Central
+2 for RTB  
+3 for Welkom
 
-ℹ️ Commands:
-• Type "my queries" to check your query status
-• Type "back to store" to change store
-• Type "reset" to start over`;
+📷 You can send images along with your messages for document requests and approvals!`;
     
     sendMessage(senderNumber, greeting);
 }
 
 async function handleRegionSelection(message, senderNumber, userSession) {
     const choice = message.trim();
+    console.log('🌍 Region choice:', choice);
     
     switch (choice) {
         case '1':
+            console.log('🌍 Selected Central region');
             userSession.selectedRegion = 'central';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'central');
             break;
         case '2':
+            console.log('🌍 Selected RTB region');
             userSession.selectedRegion = 'rtb';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'rtb');
             break;
         case '3':
+            console.log('🌍 Selected Welkom region');
             userSession.selectedRegion = 'welkom';
             userSession.step = 'select_store';
             storeHandler.showStoreOptions(senderNumber, 'welkom');
             break;
         default:
-            sendMessage(senderNumber, 'Please select a valid region (1-3)');
-            sendGreeting(senderNumber);
+            console.log('❌ Invalid region choice:', choice);
+            sendMessage(senderNumber, 'Please select a valid region:\n1 for Central\n2 for RTB\n3 for Welkom');
     }
 }
 
 async function handleMainMenu(message, senderNumber, userSession) {
     const choice = message.trim();
+    console.log('📋 Main menu choice:', choice);
     
     switch (choice) {
         case '1':
+            console.log('❓ Selected Query');
             userSession.step = 'query';
             queryHandler.showQueryOptions(senderNumber);
             break;
         case '2':
+            console.log('✅ Selected Over Sale Approval');
             userSession.step = 'approval';
             approvalHandler.showApprovalForm(senderNumber);
             break;
         case '3':
+            console.log('📄 Selected Request Document');
             userSession.step = 'document';
             documentHandler.showDocumentOptions(senderNumber);
             break;
         case '4':
+            console.log('🎓 Selected Training');
             userSession.step = 'training';
             trainingHandler.showTrainingOptions(senderNumber);
             break;
         case '5':
+            console.log('🚨 Selected Escalation');
             userSession.step = 'escalation';
             escalationHandler.showEscalationForm(senderNumber);
             break;
         default:
+            console.log('❌ Invalid main menu choice:', choice);
             sendMessage(senderNumber, 'Please select a valid option (1-5)');
             showMainMenu(senderNumber);
     }
 }
 
 function showMainMenu(senderNumber) {
+    console.log('📋 Showing main menu to:', senderNumber);
+    
     const menu = `Main Menu:
+- Query
+- Over Sale Approval
+- Request Document
+- Training
+- Escalation
 
-1️⃣ Query
-2️⃣ Over Sale Approval
-3️⃣ Request Document
-4️⃣ Training
-5️⃣ Escalation
+Please type:
+1 for Query
+2 for Over Sale Approval
+3 for Request Document
+4 for Training
+5 for Escalation
 
-Type the number of your choice (1-5):
-
-💡 Tip: Type "back to store" to change store`;
+📷 Tip: You can send images with your requests!`;
     
     sendMessage(senderNumber, menu);
 }

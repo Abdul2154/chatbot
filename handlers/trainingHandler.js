@@ -4,36 +4,42 @@ function showTrainingOptions(senderNumber) {
     const message = `TRAINING
 What topic do you need training on?
 
+Options:
 1. Receiving Stock
 2. Refund Requests
-3. Merchandising  
+3. Merchandising
 4. Stock Counting
 5. Transferring Stock
 6. Viewing Balances
 7. Printing
 
-Type the number of your choice (1-7):`;
+Please type the number (1-7):`;
     
     sendMessage(senderNumber, message);
 }
 
 async function handleTraining(message, senderNumber, userSession) {
     const choice = message.trim();
+    
     const trainingContent = {
-        '1': `📚 RECEIVING STOCK TRAINING:
+        '1': `📚 RECEIVING STOCK TRAINING
 
+Step-by-step guide:
 1. Check delivery note against order
-2. Count items carefully
+2. Count items carefully 
 3. Verify product quality
 4. Update system immediately
 5. Store items in correct locations
 6. Report any discrepancies
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '2': `📚 REFUND REQUESTS TRAINING:
+Training completed! ✅`,
 
+        '2': `📚 REFUND REQUESTS TRAINING
+
+Step-by-step guide:
 1. Check receipt validity
 2. Verify item condition
 3. Confirm return policy compliance
@@ -42,10 +48,13 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Update inventory
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '3': `📚 MERCHANDISING TRAINING:
+Training completed! ✅`,
 
+        '3': `📚 MERCHANDISING TRAINING
+
+Step-by-step guide:
 1. Arrange products attractively
 2. Check and update pricing
 3. Maintain product displays
@@ -54,10 +63,13 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Follow planogram guidelines
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '4': `📚 STOCK COUNTING TRAINING:
+Training completed! ✅`,
 
+        '4': `📚 STOCK COUNTING TRAINING
+
+Step-by-step guide:
 1. Count physical stock accurately
 2. Compare with system records
 3. Note any discrepancies
@@ -66,10 +78,13 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Update system if authorized
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '5': `📚 TRANSFERRING STOCK TRAINING:
+Training completed! ✅`,
 
+        '5': `📚 TRANSFERRING STOCK TRAINING
+
+Step-by-step guide:
 1. Create transfer documentation
 2. Pack items securely
 3. Update system records
@@ -78,10 +93,13 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Confirm receipt
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '6': `📚 VIEWING BALANCES TRAINING:
+Training completed! ✅`,
 
+        '6': `📚 VIEWING BALANCES TRAINING
+
+Step-by-step guide:
 1. Access system properly
 2. Select correct item
 3. Check current balance
@@ -90,10 +108,13 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Report issues if found
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`,
+📄 PDF guide: [Document Link]
 
-        '7': `📚 PRINTING TRAINING:
+Training completed! ✅`,
 
+        '7': `📚 PRINTING TRAINING
+
+Step-by-step guide:
 1. Select correct document
 2. Choose appropriate printer
 3. Check printer settings
@@ -102,7 +123,9 @@ async function handleTraining(message, senderNumber, userSession) {
 6. Report printer issues
 
 📹 Video guide: [Training Link]
-📄 PDF guide: [Document Link]`
+📄 PDF guide: [Document Link]
+
+Training completed! ✅`
     };
     
     if (trainingContent[choice]) {

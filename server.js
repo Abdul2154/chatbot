@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const fileUpload = require('express-fileupload');
 require('dotenv').config();
 const messageHandler = require('./handlers/messageHandler');
 const adminRoutes = require('./routes/admin');
@@ -9,25 +10,45 @@ const { initDatabase } = require('./config/database');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 app.use(cors());
+app.use(fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    abortOnLimit: true
+}));
 
 // Initialize database
 initDatabase();
 
-// Webhook endpoint for incoming WhatsApp messages
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        features: ['image_upload', 'store_filtering', 'cloudinary']
+    });
+});
+
+// Webhook endpoint for WhatsApp with image support
 app.post('/webhook', async (req, res) => {
-    const incomingMessage = req.body.Body;
+    const incomingMessage = req.body.Body || '';
     const senderNumber = req.body.From;
+    const mediaUrl = req.body.MediaUrl0;
+    const mediaContentType = req.body.MediaContentType0;
     
-    console.log(`Received message: ${incomingMessage} from ${senderNumber}`);
+    console.log(`📱 Received message: ${incomingMessage} from ${senderNumber}`);
+    
+    if (mediaUrl) {
+        console.log(`📷 Image received: ${mediaUrl}, Type: ${mediaContentType}`);
+    }
     
     try {
-        await messageHandler.handleMessage(incomingMessage, senderNumber);
+        await messageHandler.handleMessage(incomingMessage, senderNumber, mediaUrl, mediaContentType);
         res.sendStatus(200);
     } catch (error) {
-        console.error('Error handling message:', error);
+        console.error('❌ Error handling message:', error);
         res.sendStatus(500);
     }
 });
@@ -35,14 +56,16 @@ app.post('/webhook', async (req, res) => {
 // Admin panel routes
 app.use('/admin', adminRoutes);
 
-// Serve admin panel
-// Updated server.js - Admin Panel Section
+// Admin panel with image support and store filtering
 app.get('/', (req, res) => {
+    const baseUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`;
+    
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
             <title>WhatsApp Chatbot Admin Panel</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 body { 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
@@ -64,6 +87,35 @@ app.get('/', (req, res) => {
                     padding: 20px; 
                     border-radius: 12px; 
                     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                
+                .filters {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    margin-bottom: 20px;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                }
+                
+                .filter-group {
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .filter-group label {
+                    font-weight: 600;
+                    margin-bottom: 5px;
+                    color: #4a5568;
+                }
+                
+                .filter-group select {
+                    padding: 8px 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                    font-size: 14px;
                 }
                 
                 .stats-grid {
@@ -184,6 +236,23 @@ app.get('/', (req, res) => {
                     margin: 10px 0;
                 }
                 
+                .query-image {
+                    margin: 10px 0;
+                }
+                
+                .query-image img {
+                    max-width: 300px;
+                    max-height: 200px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    cursor: pointer;
+                }
+                
+                .query-image img:hover {
+                    transform: scale(1.05);
+                    transition: transform 0.2s;
+                }
+                
                 .response-section {
                     margin-top: 15px;
                     padding-top: 15px;
@@ -243,6 +312,16 @@ app.get('/', (req, res) => {
                     background: #2563eb;
                 }
                 
+                .btn-filter {
+                    background: #8b5cf6;
+                    color: white;
+                    padding: 8px 16px;
+                }
+                
+                .btn-filter:hover {
+                    background: #7c3aed;
+                }
+                
                 .team-response {
                     background: #f0f9ff;
                     border: 1px solid #bae6fd;
@@ -263,12 +342,37 @@ app.get('/', (req, res) => {
                     font-size: 0.8em;
                 }
                 
+                .image-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.9);
+                    cursor: pointer;
+                }
+                
+                .image-modal img {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    max-width: 90%;
+                    max-height: 90%;
+                }
+                
                 @media (max-width: 768px) {
                     .status-sections {
                         grid-template-columns: 1fr;
                     }
                     
                     .query-details {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .filters {
                         grid-template-columns: 1fr;
                     }
                 }
@@ -278,7 +382,40 @@ app.get('/', (req, res) => {
             <div class="container">
                 <div class="header">
                     <h1>🚀 WhatsApp Chatbot Admin Panel</h1>
+                    <p>📷 Image Support Enabled | 🏪 Store Filtering Available</p>
                     <button class="btn btn-refresh" onclick="loadQueries()">🔄 Refresh Dashboard</button>
+                </div>
+                
+                <!-- Filters Section -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="storeFilter">Filter by Store:</label>
+                        <select id="storeFilter" onchange="applyFilters()">
+                            <option value="all">All Stores</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="regionFilter">Filter by Region:</label>
+                        <select id="regionFilter" onchange="applyFilters()">
+                            <option value="all">All Regions</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="statusFilter">Filter by Status:</label>
+                        <select id="statusFilter" onchange="applyFilters()">
+                            <option value="all">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group" style="align-self: end;">
+                        <button class="btn btn-filter" onclick="clearFilters()">Clear Filters</button>
+                    </div>
                 </div>
                 
                 <div class="stats-grid" id="stats">
@@ -328,11 +465,31 @@ app.get('/', (req, res) => {
                 </div>
             </div>
             
+            <!-- Image Modal -->
+            <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+                <img id="modalImage" src="" alt="Query Image">
+            </div>
+            
             <script>
+                let currentFilters = {
+                    store: 'all',
+                    region: 'all',
+                    status: 'all'
+                };
+                
                 async function loadQueries() {
                     try {
-                        const response = await fetch('/admin/queries');
+                        // Build query string with filters
+                        const queryParams = new URLSearchParams();
+                        if (currentFilters.store !== 'all') queryParams.append('store', currentFilters.store);
+                        if (currentFilters.region !== 'all') queryParams.append('region', currentFilters.region);
+                        if (currentFilters.status !== 'all') queryParams.append('status', currentFilters.status);
+                        
+                        const response = await fetch('/admin/queries?' + queryParams.toString());
                         const queries = await response.json();
+                        
+                        // Load filter options
+                        await loadFilterOptions();
                         
                         // Categorize queries by status
                         const categorized = {
@@ -343,7 +500,7 @@ app.get('/', (req, res) => {
                         };
                         
                         // Update stats
-                        updateStats(categorized, queries);
+                        await updateStats();
                         
                         // Update each section
                         updateSection('pending', categorized.pending);
@@ -356,38 +513,66 @@ app.get('/', (req, res) => {
                     }
                 }
                 
-                function updateStats(categorized, allQueries) {
-                    const today = new Date().toDateString();
-                    const todayQueries = allQueries.filter(q => 
-                        new Date(q.created_at).toDateString() === today
-                    );
-                    
-                    document.getElementById('stats').innerHTML = \`
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #f59e0b;">\${categorized.pending.length}</div>
-                            <div class="stat-label">Pending</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #3b82f6;">\${categorized.in_progress.length}</div>
-                            <div class="stat-label">In Progress</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #10b981;">\${categorized.completed.length}</div>
-                            <div class="stat-label">Completed</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #ef4444;">\${categorized.rejected.length}</div>
-                            <div class="stat-label">Rejected</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #6366f1;">\${allQueries.length}</div>
-                            <div class="stat-label">Total Queries</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #8b5cf6;">\${todayQueries.length}</div>
-                            <div class="stat-label">Today</div>
-                        </div>
-                    \`;
+                async function loadFilterOptions() {
+                    try {
+                        const response = await fetch('/admin/filters');
+                        const filters = await response.json();
+                        
+                        // Update store filter
+                        const storeFilter = document.getElementById('storeFilter');
+                        const currentStoreValue = storeFilter.value;
+                        storeFilter.innerHTML = '<option value="all">All Stores</option>';
+                        filters.stores.forEach(store => {
+                            const option = document.createElement('option');
+                            option.value = store;
+                            option.textContent = store;
+                            storeFilter.appendChild(option);
+                        });
+                        storeFilter.value = currentStoreValue;
+                        
+                        // Update region filter
+                        const regionFilter = document.getElementById('regionFilter');
+                        const currentRegionValue = regionFilter.value;
+                        regionFilter.innerHTML = '<option value="all">All Regions</option>';
+                        filters.regions.forEach(region => {
+                            const option = document.createElement('option');
+                            option.value = region;
+                            option.textContent = region.charAt(0).toUpperCase() + region.slice(1);
+                            regionFilter.appendChild(option);
+                        });
+                        regionFilter.value = currentRegionValue;
+                        
+                    } catch (error) {
+                        console.error('Error loading filter options:', error);
+                    }
+                }
+                
+                async function updateStats() {
+                    try {
+                        const response = await fetch('/admin/stats');
+                        const stats = await response.json();
+                        
+                        document.getElementById('stats').innerHTML = \`
+                            <div class="stat-card">
+                                <div class="stat-number" style="color: #f59e0b;">\${stats.pending || 0}</div>
+                                <div class="stat-label">Pending</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" style="color: #10b981;">\${stats.completed || 0}</div>
+                                <div class="stat-label">Completed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" style="color: #6366f1;">\${stats.total || 0}</div>
+                                <div class="stat-label">Total Queries</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" style="color: #8b5cf6;">\${stats.today || 0}</div>
+                                <div class="stat-label">Today</div>
+                            </div>
+                        \`;
+                    } catch (error) {
+                        console.error('Error updating stats:', error);
+                    }
                 }
                 
                 function updateSection(sectionName, queries) {
@@ -407,7 +592,7 @@ app.get('/', (req, res) => {
                         <div class="query">
                             <div class="query-header">
                                 <div class="query-id">Query #\${query.query_id}</div>
-                                <div class="query-type">\${query.query_type.replace('_', ' ').toUpperCase()}</div>
+                                <div class="query-type">\${query.query_type.replace(/_/g, ' ').toUpperCase()}</div>
                             </div>
                             
                             <div class="query-details">
@@ -431,6 +616,13 @@ app.get('/', (req, res) => {
                                 <span class="detail-label">📋 Details:</span>
                                 <div class="query-data">\${JSON.stringify(query.query_data, null, 2)}</div>
                             </div>
+                            
+                            \${query.image_url ? \`
+                                <div class="query-image">
+                                    <span class="detail-label">📷 Attached Image:</span><br>
+                                    <img src="\${query.image_url}" alt="Query Image" onclick="openImageModal('\${query.image_url}')">
+                                </div>
+                            \` : ''}
                             
                             \${query.status === 'pending' ? \`
                                 <div class="response-section">
@@ -457,6 +649,28 @@ app.get('/', (req, res) => {
                     \`).join('');
                 }
                 
+                function applyFilters() {
+                    currentFilters.store = document.getElementById('storeFilter').value;
+                    currentFilters.region = document.getElementById('regionFilter').value;
+                    currentFilters.status = document.getElementById('statusFilter').value;
+                    
+                    loadQueries();
+                }
+                
+                function clearFilters() {
+                    document.getElementById('storeFilter').value = 'all';
+                    document.getElementById('regionFilter').value = 'all';
+                    document.getElementById('statusFilter').value = 'all';
+                    
+                    currentFilters = {
+                        store: 'all',
+                        region: 'all',
+                        status: 'all'
+                    };
+                    
+                    loadQueries();
+                }
+                
                 async function respondToQuery(queryId, status) {
                     const response = document.getElementById(\`response-\${queryId}\`).value;
                     
@@ -466,17 +680,30 @@ app.get('/', (req, res) => {
                     }
                     
                     try {
-                        await fetch('/admin/respond', {
+                        const result = await fetch('/admin/respond', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ queryId, response, status })
                         });
                         
-                        alert('Response sent successfully!');
-                        loadQueries();
+                        if (result.ok) {
+                            alert('Response sent successfully!');
+                            loadQueries();
+                        } else {
+                            alert('Error sending response. Please try again.');
+                        }
                     } catch (error) {
                         alert('Error sending response: ' + error.message);
                     }
+                }
+                
+                function openImageModal(imageUrl) {
+                    document.getElementById('modalImage').src = imageUrl;
+                    document.getElementById('imageModal').style.display = 'block';
+                }
+                
+                function closeImageModal() {
+                    document.getElementById('imageModal').style.display = 'none';
                 }
                 
                 // Load queries on page load
@@ -490,7 +717,20 @@ app.get('/', (req, res) => {
     `);
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-    console.log(`Admin panel: http://localhost:${port}`);
+// Error handling
+app.use((error, req, res, next) => {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Server is running on port ${port}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📱 WhatsApp webhook: ${process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`}/webhook`);
+    console.log(`🖥️  Admin panel: ${process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`}`);
+    console.log(`📷 Image upload: Cloudinary enabled`);
+    console.log(`🏪 Store filtering: Available`);
 });

@@ -3,13 +3,13 @@ const { getStoresByRegion } = require('../config/stores');
 
 function showStoreOptions(senderNumber, region) {
     const stores = getStoresByRegion(region);
-    let storeList = `Please select your store from ${region.toUpperCase()} region:\n\n`;
+    let storeList = `Select Store (based on chosen region - ${region.toUpperCase()}):\n\n`;
     
     stores.forEach((store, index) => {
         storeList += `${index + 1}. ${store}\n`;
     });
     
-    storeList += '\nType the number of your store:';
+    storeList += '\nPlease type the number of your store:';
     sendMessage(senderNumber, storeList);
 }
 
@@ -31,14 +31,18 @@ function handleStoreSelection(message, senderNumber, userSession) {
 
 function showMainMenu(senderNumber) {
     const menu = `Main Menu:
+- Query
+- Over Sale Approval
+- Request Document
+- Training
+- Escalation
 
-1️⃣ Query
-2️⃣ Over Sale Approval
-3️⃣ Request Document
-4️⃣ Training
-5️⃣ Escalation
-
-Type the number of your choice (1-5):`;
+Please type:
+1 for Query
+2 for Over Sale Approval
+3 for Request Document
+4 for Training
+5 for Escalation`;
     
     sendMessage(senderNumber, menu);
 }

@@ -4,11 +4,12 @@ const QueryModel = require('../models/queries');
 function showApprovalForm(senderNumber) {
     const message = `OVER SALE APPROVAL
 
-Please provide the following information (separate each field with a new line):
+Please upload your latest payslip and fill in the following:
 
-1. Employee Number:
-2. Requested Approval Amount:
-3. Net Pay Amount:
+Please provide (one per line):
+- Employee number 
+- Requested Approval Amount
+- Net Pay Amount
 
 Example:
 EMP001
@@ -25,11 +26,11 @@ async function handleApproval(message, senderNumber, userSession) {
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
     
     if (lines.length < 3) {
-        sendMessage(senderNumber, `❌ Please provide all required information in the correct format:
+        sendMessage(senderNumber, `❌ Please provide all required information:
 
-1. Employee Number:
-2. Requested Approval Amount:
-3. Net Pay Amount:
+- Employee number 
+- Requested Approval Amount
+- Net Pay Amount
 
 Example:
 EMP001
@@ -40,8 +41,8 @@ EMP001
     
     const approvalData = {
         employee_number: lines[0],
-        requested_amount: lines[1],
-        net_pay: lines[2]
+        requested_approval_amount: lines[1],
+        net_pay_amount: lines[2]
     };
     
     try {
@@ -53,16 +54,15 @@ EMP001
             approvalData
         );
         
-        sendMessage(senderNumber, `✅ Over sale approval request submitted successfully!
+        sendMessage(senderNumber, `✅ Over Sale Approval request submitted successfully!
 
 Query ID: #${queryId}
 
-📋 Submitted Details:
-- Employee: ${approvalData.employee_number}
-- Requested Amount: R${approvalData.requested_amount}
-- Net Pay: R${approvalData.net_pay}
+Your request will be forwarded to manager/approver for review.
 
-Please upload your latest payslip if you haven't already. Your request will be forwarded to your manager for approval.`);
+Please upload your latest payslip if you haven't already.
+
+Thank you!`);
         
         userSession.step = 'main_menu';
         

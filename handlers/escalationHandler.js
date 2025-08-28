@@ -4,20 +4,19 @@ const QueryModel = require('../models/queries');
 function showEscalationForm(senderNumber) {
     const message = `ESCALATION
 
-Please provide the following information (separate each field with a new line):
+Please describe the issue briefly. Our team will get back to you shortly.
 
-1. Store:
-2. Employee Name:
-3. Issue Description:
-4. Contact Number:
+Please provide the following information (one per line):
+- Store
+- Employee Name
+- Issue Description
+- Contact Number
 
 Example:
 Doornkop
 John Smith
-System not working properly, unable to process transactions
-0123456789
-
-Our team will get back to you shortly.`;
+System not working, cannot process transactions
+0123456789`;
     
     sendMessage(senderNumber, message);
 }
@@ -27,17 +26,17 @@ async function handleEscalation(message, senderNumber, userSession) {
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
     
     if (lines.length < 4) {
-        sendMessage(senderNumber, `❌ Please provide all required information in the correct format:
+        sendMessage(senderNumber, `❌ Please provide all required information:
 
-1. Store:
-2. Employee Name:
-3. Issue Description:
-4. Contact Number:
+- Store
+- Employee Name  
+- Issue Description
+- Contact Number
 
 Example:
 Doornkop
 John Smith
-System not working properly
+System not working
 0123456789`);
         return;
     }
@@ -62,13 +61,9 @@ System not working properly
 
 Query ID: #${queryId}
 
-📋 Submitted Details:
-- Store: ${escalationData.store}
-- Employee: ${escalationData.employee_name}
-- Issue: ${escalationData.issue_description}
-- Contact: ${escalationData.contact_number}
+Our team will get back to you shortly regarding your issue.
 
-Our team will get back to you shortly regarding your issue.`);
+Thank you!`);
         
         userSession.step = 'main_menu';
         
