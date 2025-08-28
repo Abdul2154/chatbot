@@ -6,6 +6,7 @@ const documentHandler = require('./documentHandler');
 const trainingHandler = require('./trainingHandler');
 const escalationHandler = require('./escalationHandler');
 const { pool } = require('../config/database');
+const { downloadAndUploadFromTwilio } = require('../config/cloudinary');
 
 // Database session management
 async function getSession(userNumber) {
@@ -32,8 +33,12 @@ async function saveSession(userNumber, sessionData) {
     }
 }
 
-async function handleMessage(message, senderNumber) {
+async function handleMessage(message, senderNumber, mediaUrl = null, mediaContentType = null) {
     console.log('🔄 Processing message:', message, 'from:', senderNumber);
+    
+    if (mediaUrl) {
+        console.log('📷 Image received:', mediaUrl);
+    }
     
     // Reset command
     if (message.toLowerCase().trim() === 'reset') {
@@ -46,6 +51,22 @@ async function handleMessage(message, senderNumber) {
     
     const userSession = await getSession(senderNumber);
     console.log('👤 User session step:', userSession.step);
+    
+    // Handle image upload for certain steps
+    if (mediaUrl && (userSession.step === 'query_details' || userSession.step === 'approval' || userSession.step === 'document_details')) {
+        try {
+            const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_image`;
+            const uploadResult = await downloadAndUploadFromTwilio(mediaUrl, fileName);
+            
+            userSession.imageUrl = uploadResult.url;
+            userSession.imagePublicId = uploadResult.public_id;
+            
+            sendMessage(senderNumber, '📷 Image received and uploaded successfully! Please continue with your request.');
+        } catch (error) {
+            console.error('Error processing image:', error);
+            sendMessage(senderNumber, '❌ Sorry, there was an error processing your image. Please continue with your request.');
+        }
+    }
     
     switch (userSession.step) {
         case 'greeting':
@@ -126,7 +147,9 @@ Select Region:
 Please type:
 1 for Central
 2 for RTB  
-3 for Welkom`;
+3 for Welkom
+
+📷 You can send images along with your messages for document requests and approvals!`;
     
     sendMessage(senderNumber, greeting);
 }
@@ -212,7 +235,9 @@ Please type:
 2 for Over Sale Approval
 3 for Request Document
 4 for Training
-5 for Escalation`;
+5 for Escalation
+
+📷 Tip: You can send images with your requests!`;
     
     sendMessage(senderNumber, menu);
 }
