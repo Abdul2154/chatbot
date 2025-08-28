@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const messageHandler = require('./handlers/messageHandler');
 const adminRoutes = require('./routes/admin');
@@ -13,18 +14,26 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
 
+// Serve uploaded images statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Initialize database
 initDatabase();
 
 // Webhook endpoint for incoming WhatsApp messages
 app.post('/webhook', async (req, res) => {
-    const incomingMessage = req.body.Body;
+    const incomingMessage = req.body.Body || '';
     const senderNumber = req.body.From;
+    const mediaUrl = req.body.MediaUrl0; // Twilio sends media URL here
+    const mediaType = req.body.MediaContentType0; // Media content type
     
     console.log(`Received message: ${incomingMessage} from ${senderNumber}`);
+    if (mediaUrl) {
+        console.log(`Media received: ${mediaType} - ${mediaUrl}`);
+    }
     
     try {
-        await messageHandler.handleMessage(incomingMessage, senderNumber);
+        await messageHandler.handleMessage(incomingMessage, senderNumber, mediaUrl, mediaType);
         res.sendStatus(200);
     } catch (error) {
         console.error('Error handling message:', error);
@@ -35,8 +44,7 @@ app.post('/webhook', async (req, res) => {
 // Admin panel routes
 app.use('/admin', adminRoutes);
 
-// Serve admin panel
-// Updated server.js - Admin Panel Section
+// Enhanced admin dashboard
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -44,31 +52,66 @@ app.get('/', (req, res) => {
         <head>
             <title>WhatsApp Chatbot Admin Panel</title>
             <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                
                 body { 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                    margin: 0; 
-                    padding: 20px; 
                     background: #f8fafc; 
                     color: #1a202c;
+                    line-height: 1.6;
                 }
                 
                 .container { 
                     max-width: 1400px; 
                     margin: 0 auto; 
+                    padding: 20px;
                 }
                 
                 .header { 
                     text-align: center; 
                     margin-bottom: 30px; 
                     background: white; 
-                    padding: 20px; 
+                    padding: 30px; 
                     border-radius: 12px; 
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                }
+                
+                .filter-section {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 20px;
+                }
+                
+                .filter-controls {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    align-items: end;
+                }
+                
+                .filter-group {
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .filter-group label {
+                    font-weight: 600;
+                    margin-bottom: 5px;
+                    color: #4a5568;
+                }
+                
+                .filter-group select, .filter-group input {
+                    padding: 8px 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                    font-size: 14px;
                 }
                 
                 .stats-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
                     gap: 20px;
                     margin-bottom: 30px;
                 }
@@ -77,8 +120,13 @@ app.get('/', (req, res) => {
                     background: white;
                     padding: 20px;
                     border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                     text-align: center;
+                    transition: transform 0.2s;
+                }
+                
+                .stat-card:hover {
+                    transform: translateY(-2px);
                 }
                 
                 .stat-number {
@@ -92,61 +140,67 @@ app.get('/', (req, res) => {
                     font-size: 0.9em;
                 }
                 
-                .status-sections {
+                .main-content {
                     display: grid;
-                    grid-template-columns: 1fr 1fr;
+                    grid-template-columns: 2fr 1fr;
                     gap: 30px;
                 }
                 
-                .status-section {
+                .queries-section {
                     background: white;
                     border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                
+                .images-section {
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                     overflow: hidden;
                 }
                 
                 .section-header {
                     padding: 20px;
                     font-weight: bold;
-                    font-size: 1.2em;
+                    font-size: 1.3em;
                     border-bottom: 2px solid #e2e8f0;
-                }
-                
-                .pending-header { background: #fed7aa; color: #9a3412; }
-                .in-progress-header { background: #bfdbfe; color: #1e40af; }
-                .completed-header { background: #bbf7d0; color: #166534; }
-                .rejected-header { background: #fecaca; color: #991b1b; }
-                
-                .query-list {
-                    max-height: 600px;
-                    overflow-y: auto;
-                }
-                
-                .query {
-                    border-bottom: 1px solid #e2e8f0;
-                    padding: 20px;
-                    transition: background-color 0.2s;
-                }
-                
-                .query:hover {
                     background: #f7fafc;
                 }
                 
-                .query:last-child {
+                .content-area {
+                    max-height: 800px;
+                    overflow-y: auto;
+                    padding: 20px;
+                }
+                
+                .query-item {
+                    border-bottom: 1px solid #e2e8f0;
+                    padding: 20px 0;
+                    transition: background-color 0.2s;
+                }
+                
+                .query-item:hover {
+                    background: #f8fafc;
+                }
+                
+                .query-item:last-child {
                     border-bottom: none;
                 }
                 
                 .query-header {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: between;
                     align-items: center;
                     margin-bottom: 15px;
+                    flex-wrap: wrap;
+                    gap: 10px;
                 }
                 
                 .query-id {
                     font-weight: bold;
-                    font-size: 1.1em;
                     color: #2d3748;
+                    font-size: 1.1em;
                 }
                 
                 .query-type {
@@ -158,9 +212,21 @@ app.get('/', (req, res) => {
                     font-weight: 500;
                 }
                 
+                .status-badge {
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 0.8em;
+                    font-weight: 500;
+                }
+                
+                .status-pending { background: #fed7aa; color: #9a3412; }
+                .status-completed { background: #bbf7d0; color: #166534; }
+                .status-rejected { background: #fecaca; color: #991b1b; }
+                .status-in_progress { background: #bfdbfe; color: #1e40af; }
+                
                 .query-details {
                     display: grid;
-                    grid-template-columns: 1fr 1fr;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                     gap: 15px;
                     margin-bottom: 15px;
                 }
@@ -174,20 +240,74 @@ app.get('/', (req, res) => {
                     color: #4a5568;
                 }
                 
-                .query-data {
-                    background: #f7fafc;
-                    padding: 12px;
-                    border-radius: 6px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 0.8em;
-                    white-space: pre-wrap;
-                    margin: 10px 0;
+                .image-gallery {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
                 }
                 
-                .response-section {
-                    margin-top: 15px;
-                    padding-top: 15px;
-                    border-top: 1px solid #e2e8f0;
+                .image-card {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    transition: transform 0.2s;
+                }
+                
+                .image-card:hover {
+                    transform: scale(1.02);
+                }
+                
+                .image-card img {
+                    width: 100%;
+                    height: 150px;
+                    object-fit: cover;
+                }
+                
+                .image-info {
+                    padding: 10px;
+                    font-size: 0.8em;
+                    background: #f7fafc;
+                }
+                
+                .image-query-id {
+                    font-weight: 600;
+                    color: #2d3748;
+                }
+                
+                .image-store {
+                    color: #718096;
+                    margin-top: 5px;
+                }
+                
+                .btn {
+                    padding: 10px 20px;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    margin-right: 10px;
+                    margin-bottom: 10px;
+                    transition: all 0.2s;
+                }
+                
+                .btn-primary {
+                    background: #3b82f6;
+                    color: white;
+                }
+                
+                .btn-primary:hover {
+                    background: #2563eb;
+                    transform: translateY(-1px);
+                }
+                
+                .btn-success {
+                    background: #10b981;
+                    color: white;
+                }
+                
+                .btn-danger {
+                    background: #ef4444;
+                    color: white;
                 }
                 
                 .response-area {
@@ -198,57 +318,7 @@ app.get('/', (req, res) => {
                     border-radius: 6px;
                     font-family: inherit;
                     resize: vertical;
-                    margin-bottom: 10px;
-                }
-                
-                .btn {
-                    padding: 8px 16px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-weight: 500;
-                    margin-right: 8px;
-                    transition: all 0.2s;
-                }
-                
-                .btn-complete {
-                    background: #10b981;
-                    color: white;
-                }
-                
-                .btn-complete:hover {
-                    background: #059669;
-                    transform: translateY(-1px);
-                }
-                
-                .btn-reject {
-                    background: #ef4444;
-                    color: white;
-                }
-                
-                .btn-reject:hover {
-                    background: #dc2626;
-                    transform: translateY(-1px);
-                }
-                
-                .btn-refresh {
-                    background: #3b82f6;
-                    color: white;
-                    padding: 12px 24px;
-                    font-size: 1em;
-                    margin-bottom: 20px;
-                }
-                
-                .btn-refresh:hover {
-                    background: #2563eb;
-                }
-                
-                .team-response {
-                    background: #f0f9ff;
-                    border: 1px solid #bae6fd;
-                    padding: 12px;
-                    border-radius: 6px;
-                    margin-top: 10px;
+                    margin: 10px 0;
                 }
                 
                 .empty-state {
@@ -258,17 +328,33 @@ app.get('/', (req, res) => {
                     font-style: italic;
                 }
                 
-                .timestamp {
-                    color: #718096;
+                .image-count {
+                    background: #3b82f6;
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-size: 0.7em;
+                    margin-left: 10px;
+                }
+                
+                .query-data {
+                    background: #f7fafc;
+                    padding: 12px;
+                    border-radius: 6px;
+                    font-family: 'Courier New', monospace;
                     font-size: 0.8em;
+                    white-space: pre-wrap;
+                    margin: 10px 0;
+                    max-height: 150px;
+                    overflow-y: auto;
                 }
                 
                 @media (max-width: 768px) {
-                    .status-sections {
+                    .main-content {
                         grid-template-columns: 1fr;
                     }
                     
-                    .query-details {
+                    .filter-controls {
                         grid-template-columns: 1fr;
                     }
                 }
@@ -277,184 +363,273 @@ app.get('/', (req, res) => {
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🚀 WhatsApp Chatbot Admin Panel</h1>
-                    <button class="btn btn-refresh" onclick="loadQueries()">🔄 Refresh Dashboard</button>
+                    <h1>WhatsApp Chatbot Admin Panel</h1>
+                    <button class="btn btn-primary" onclick="loadData()">Refresh Dashboard</button>
                 </div>
                 
+                <!-- Filter Section -->
+                <div class="filter-section">
+                    <h3 style="margin-bottom: 15px;">Filters</h3>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="regionFilter">Region:</label>
+                            <select id="regionFilter" onchange="applyFilters()">
+                                <option value="">All Regions</option>
+                                <option value="central">Central</option>
+                                <option value="rtb">RTB</option>
+                                <option value="welkom">Welkom</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="storeFilter">Store:</label>
+                            <select id="storeFilter" onchange="applyFilters()">
+                                <option value="">All Stores</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="statusFilter">Status:</label>
+                            <select id="statusFilter" onchange="applyFilters()">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="hasImagesFilter">Has Images:</label>
+                            <select id="hasImagesFilter" onchange="applyFilters()">
+                                <option value="">All</option>
+                                <option value="true">With Images</option>
+                                <option value="false">Without Images</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <button class="btn btn-primary" onclick="clearFilters()">Clear Filters</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats Section -->
                 <div class="stats-grid" id="stats">
                     <!-- Stats will be loaded here -->
                 </div>
                 
-                <div class="status-sections">
-                    <div class="status-section">
-                        <div class="section-header pending-header">
-                            ⏳ Pending Queries (<span id="pending-count">0</span>)
+                <!-- Main Content -->
+                <div class="main-content">
+                    <div class="queries-section">
+                        <div class="section-header">
+                            Queries (<span id="queries-count">0</span>)
                         </div>
-                        <div class="query-list" id="pending-queries">
-                            <!-- Pending queries will be loaded here -->
+                        <div class="content-area" id="queries-container">
+                            <!-- Queries will be loaded here -->
                         </div>
                     </div>
                     
-                    <div class="status-section">
-                        <div class="section-header in-progress-header">
-                            🔄 In Progress (<span id="progress-count">0</span>)
+                    <div class="images-section">
+                        <div class="section-header">
+                            Images (<span id="images-count">0</span>)
                         </div>
-                        <div class="query-list" id="progress-queries">
-                            <!-- In progress queries will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 30px;">
-                    <div class="status-sections">
-                        <div class="status-section">
-                            <div class="section-header completed-header">
-                                ✅ Completed Queries (<span id="completed-count">0</span>)
-                            </div>
-                            <div class="query-list" id="completed-queries">
-                                <!-- Completed queries will be loaded here -->
-                            </div>
-                        </div>
-                        
-                        <div class="status-section">
-                            <div class="section-header rejected-header">
-                                ❌ Rejected Queries (<span id="rejected-count">0</span>)
-                            </div>
-                            <div class="query-list" id="rejected-queries">
-                                <!-- Rejected queries will be loaded here -->
-                            </div>
+                        <div class="content-area" id="images-container">
+                            <!-- Images will be loaded here -->
                         </div>
                     </div>
                 </div>
             </div>
             
             <script>
-                async function loadQueries() {
+                let allQueries = [];
+                let allImages = [];
+                let filteredQueries = [];
+                let filteredImages = [];
+                
+                async function loadData() {
                     try {
-                        const response = await fetch('/admin/queries');
-                        const queries = await response.json();
+                        // Load queries and images
+                        const [queriesResponse, imagesResponse, storesResponse] = await Promise.all([
+                            fetch('/admin/queries'),
+                            fetch('/admin/images'),
+                            fetch('/admin/stores')
+                        ]);
                         
-                        // Categorize queries by status
-                        const categorized = {
-                            pending: queries.filter(q => q.status === 'pending'),
-                            in_progress: queries.filter(q => q.status === 'in_progress'),
-                            completed: queries.filter(q => q.status === 'completed'),
-                            rejected: queries.filter(q => q.status === 'rejected')
-                        };
+                        allQueries = await queriesResponse.json();
+                        allImages = await imagesResponse.json();
+                        const stores = await storesResponse.json();
                         
-                        // Update stats
-                        updateStats(categorized, queries);
+                        // Populate store filter
+                        const storeFilter = document.getElementById('storeFilter');
+                        storeFilter.innerHTML = '<option value="">All Stores</option>';
+                        stores.forEach(store => {
+                            const option = document.createElement('option');
+                            option.value = store.store;
+                            option.textContent = `${store.store} (${store.region})`;
+                            storeFilter.appendChild(option);
+                        });
                         
-                        // Update each section
-                        updateSection('pending', categorized.pending);
-                        updateSection('progress', categorized.in_progress);
-                        updateSection('completed', categorized.completed);
-                        updateSection('rejected', categorized.rejected);
+                        applyFilters();
                         
                     } catch (error) {
-                        console.error('Error loading queries:', error);
+                        console.error('Error loading data:', error);
                     }
                 }
                 
-                function updateStats(categorized, allQueries) {
+                function applyFilters() {
+                    const regionFilter = document.getElementById('regionFilter').value;
+                    const storeFilter = document.getElementById('storeFilter').value;
+                    const statusFilter = document.getElementById('statusFilter').value;
+                    const hasImagesFilter = document.getElementById('hasImagesFilter').value;
+                    
+                    // Filter queries
+                    filteredQueries = allQueries.filter(query => {
+                        if (regionFilter && query.region !== regionFilter) return false;
+                        if (storeFilter && query.store !== storeFilter) return false;
+                        if (statusFilter && query.status !== statusFilter) return false;
+                        if (hasImagesFilter === 'true' && !query.has_images) return false;
+                        if (hasImagesFilter === 'false' && query.has_images) return false;
+                        return true;
+                    });
+                    
+                    // Filter images
+                    filteredImages = allImages.filter(image => {
+                        if (regionFilter && image.region !== regionFilter) return false;
+                        if (storeFilter && image.store !== storeFilter) return false;
+                        return true;
+                    });
+                    
+                    updateStats();
+                    renderQueries();
+                    renderImages();
+                }
+                
+                function clearFilters() {
+                    document.getElementById('regionFilter').value = '';
+                    document.getElementById('storeFilter').value = '';
+                    document.getElementById('statusFilter').value = '';
+                    document.getElementById('hasImagesFilter').value = '';
+                    applyFilters();
+                }
+                
+                function updateStats() {
                     const today = new Date().toDateString();
-                    const todayQueries = allQueries.filter(q => 
+                    const todayQueries = filteredQueries.filter(q => 
                         new Date(q.created_at).toDateString() === today
                     );
                     
                     document.getElementById('stats').innerHTML = \`
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #f59e0b;">\${categorized.pending.length}</div>
+                            <div class="stat-number" style="color: #6366f1;">\${filteredQueries.length}</div>
+                            <div class="stat-label">Total Queries</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #f59e0b;">\${filteredQueries.filter(q => q.status === 'pending').length}</div>
                             <div class="stat-label">Pending</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #3b82f6;">\${categorized.in_progress.length}</div>
-                            <div class="stat-label">In Progress</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #10b981;">\${categorized.completed.length}</div>
+                            <div class="stat-number" style="color: #10b981;">\${filteredQueries.filter(q => q.status === 'completed').length}</div>
                             <div class="stat-label">Completed</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #ef4444;">\${categorized.rejected.length}</div>
-                            <div class="stat-label">Rejected</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #6366f1;">\${allQueries.length}</div>
-                            <div class="stat-label">Total Queries</div>
+                            <div class="stat-number" style="color: #3b82f6;">\${filteredImages.length}</div>
+                            <div class="stat-label">Images</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-number" style="color: #8b5cf6;">\${todayQueries.length}</div>
                             <div class="stat-label">Today</div>
                         </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #06b6d4;">\${filteredQueries.filter(q => q.has_images).length}</div>
+                            <div class="stat-label">With Images</div>
+                        </div>
                     \`;
                 }
                 
-                function updateSection(sectionName, queries) {
-                    const containerId = sectionName === 'progress' ? 'progress-queries' : \`\${sectionName}-queries\`;
-                    const countId = sectionName === 'progress' ? 'progress-count' : \`\${sectionName}-count\`;
+                function renderQueries() {
+                    document.getElementById('queries-count').textContent = filteredQueries.length;
+                    const container = document.getElementById('queries-container');
                     
-                    document.getElementById(countId).textContent = queries.length;
-                    
-                    const container = document.getElementById(containerId);
-                    
-                    if (queries.length === 0) {
-                        container.innerHTML = '<div class="empty-state">No queries in this category</div>';
+                    if (filteredQueries.length === 0) {
+                        container.innerHTML = '<div class="empty-state">No queries match the current filters</div>';
                         return;
                     }
                     
-                    container.innerHTML = queries.map(query => \`
-                        <div class="query">
+                    container.innerHTML = filteredQueries.map(query => \`
+                        <div class="query-item">
                             <div class="query-header">
                                 <div class="query-id">Query #\${query.query_id}</div>
-                                <div class="query-type">\${query.query_type.replace('_', ' ').toUpperCase()}</div>
+                                <div>
+                                    <span class="query-type">\${query.query_type.replace('_', ' ').toUpperCase()}</span>
+                                    <span class="status-badge status-\${query.status}">\${query.status.replace('_', ' ').toUpperCase()}</span>
+                                    \${query.has_images ? \`<span class="image-count">\${query.image_count || 0} images</span>\` : ''}
+                                </div>
                             </div>
                             
                             <div class="query-details">
                                 <div class="detail-item">
-                                    <span class="detail-label">👤 User:</span> \${query.user_number}
+                                    <span class="detail-label">User:</span> \${query.user_number}
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">🏪 Store:</span> \${query.store} (\${query.region})
+                                    <span class="detail-label">Store:</span> \${query.store} (\${query.region})
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">📅 Created:</span> 
-                                    <span class="timestamp">\${new Date(query.created_at).toLocaleString()}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">🔄 Updated:</span> 
-                                    <span class="timestamp">\${new Date(query.updated_at).toLocaleString()}</span>
+                                    <span class="detail-label">Created:</span> \${new Date(query.created_at).toLocaleString()}
                                 </div>
                             </div>
                             
                             <div class="detail-item">
-                                <span class="detail-label">📋 Details:</span>
+                                <span class="detail-label">Details:</span>
                                 <div class="query-data">\${JSON.stringify(query.query_data, null, 2)}</div>
                             </div>
                             
                             \${query.status === 'pending' ? \`
-                                <div class="response-section">
+                                <div style="margin-top: 15px;">
                                     <textarea 
                                         id="response-\${query.id}" 
                                         class="response-area"
-                                        placeholder="Enter your response to the user..."
+                                        placeholder="Enter your response..."
                                     >\${query.team_response || ''}</textarea>
                                     <div>
-                                        <button class="btn btn-complete" onclick="respondToQuery(\${query.id}, 'completed')">
-                                            ✅ Send Response & Complete
+                                        <button class="btn btn-success" onclick="respondToQuery(\${query.id}, 'completed')">
+                                            Complete
                                         </button>
-                                        <button class="btn btn-reject" onclick="respondToQuery(\${query.id}, 'rejected')">
-                                            ❌ Reject Query
+                                        <button class="btn btn-danger" onclick="respondToQuery(\${query.id}, 'rejected')">
+                                            Reject
                                         </button>
+                                        \${query.has_images ? \`<button class="btn btn-primary" onclick="viewQueryImages('\${query.query_id}')">View Images</button>\` : ''}
                                     </div>
                                 </div>
-                            \` : query.team_response ? \`
-                                <div class="team-response">
-                                    <strong>Team Response:</strong> \${query.team_response}
-                                </div>
-                            \` : ''}
+                            \` : \`
+                                \${query.team_response ? \`<div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px; margin-top: 10px;"><strong>Response:</strong> \${query.team_response}</div>\` : ''}
+                                \${query.has_images ? \`<button class="btn btn-primary" onclick="viewQueryImages('\${query.query_id}')" style="margin-top: 10px;">View Images</button>\` : ''}
+                            \`}
                         </div>
                     \`).join('');
+                }
+                
+                function renderImages() {
+                    document.getElementById('images-count').textContent = filteredImages.length;
+                    const container = document.getElementById('images-container');
+                    
+                    if (filteredImages.length === 0) {
+                        container.innerHTML = '<div class="empty-state">No images match the current filters</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = \`
+                        <div class="image-gallery">
+                            \${filteredImages.map(image => \`
+                                <div class="image-card">
+                                    <img src="\${image.image_url}" alt="Query Image" onclick="openImageModal('\${image.image_url}')">
+                                    <div class="image-info">
+                                        <div class="image-query-id">Query #\${image.query_id}</div>
+                                        <div class="image-store">\${image.store} (\${image.region})</div>
+                                        <div style="color: #9ca3af; font-size: 0.7em; margin-top: 5px;">
+                                            \${new Date(image.uploaded_at).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            \`).join('')}
+                        </div>
+                    \`;
                 }
                 
                 async function respondToQuery(queryId, status) {
@@ -473,17 +648,84 @@ app.get('/', (req, res) => {
                         });
                         
                         alert('Response sent successfully!');
-                        loadQueries();
+                        loadData();
                     } catch (error) {
                         alert('Error sending response: ' + error.message);
                     }
                 }
                 
-                // Load queries on page load
-                loadQueries();
+                function openImageModal(imageUrl) {
+                    const modal = document.createElement('div');
+                    modal.style.cssText = \`
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                        background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
+                        align-items: center; z-index: 1000; cursor: pointer;
+                    \`;
+                    
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 8px;';
+                    
+                    modal.appendChild(img);
+                    modal.onclick = () => document.body.removeChild(modal);
+                    document.body.appendChild(modal);
+                }
+                
+                async function viewQueryImages(queryId) {
+                    try {
+                        const response = await fetch(\`/admin/images/query/\${queryId}\`);
+                        const images = await response.json();
+                        
+                        if (images.length === 0) {
+                            alert('No images found for this query.');
+                            return;
+                        }
+                        
+                        const modal = document.createElement('div');
+                        modal.style.cssText = \`
+                            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                            background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
+                            align-items: center; z-index: 1000; padding: 20px;
+                        \`;
+                        
+                        const content = document.createElement('div');
+                        content.style.cssText = \`
+                            background: white; padding: 20px; border-radius: 12px; 
+                            max-width: 80%; max-height: 80%; overflow-y: auto;
+                        \`;
+                        
+                        content.innerHTML = \`
+                            <h3 style="margin-bottom: 20px;">Images for Query #\${queryId}</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                \${images.map(image => \`
+                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                        <img src="\${image.image_url}" style="width: 100%; height: 150px; object-fit: cover;">
+                                        <div style="padding: 10px; font-size: 0.8em;">
+                                            <div>\${image.image_name}</div>
+                                            <div style="color: #718096;">\${new Date(image.uploaded_at).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                \`).join('')}
+                            </div>
+                            <button onclick="document.body.removeChild(this.closest('div').closest('div'))" 
+                                    style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Close
+                            </button>
+                        \`;
+                        
+                        modal.appendChild(content);
+                        document.body.appendChild(modal);
+                        
+                    } catch (error) {
+                        alert('Error loading images: ' + error.message);
+                    }
+                }
+                
+                // Load data on page load
+                loadData();
                 
                 // Auto-refresh every 30 seconds
-                setInterval(loadQueries, 30000);
+                setInterval(loadData, 30000);
             </script>
         </body>
         </html>
