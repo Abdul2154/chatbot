@@ -35,6 +35,8 @@ Please provide the following information (one per line):
 - Reason
 - Amount
 
+📷 You can also send an image (receipt, proof) along with this information.
+
 Example:
 EMP001
 Standard Bank
@@ -63,6 +65,8 @@ Example: EMP001`);
 Please provide:
 - List of Items
 
+📷 You can send an image showing what items you need.
+
 Example:
 Pens - 10 pieces
 Paper - 5 reams
@@ -79,6 +83,8 @@ Please provide the following information (one per line):
 - Name & Surname
 - Contact Number
 
+📷 You can send an image of customer ID or documents.
+
 Example:
 EMP001
 John Smith
@@ -93,6 +99,8 @@ John Smith
 Please provide:
 - Employee Number
 
+📷 You can send supporting documents if needed.
+
 Example: EMP001`);
             break;
             
@@ -104,6 +112,8 @@ Example: EMP001`);
 Please provide:
 - Nature of Emergency
 
+📷 You can send screenshots of error messages if applicable.
+
 Example: System down, cannot process sales`);
             break;
             
@@ -113,7 +123,15 @@ Example: System down, cannot process sales`);
 }
 
 async function handleQueryDetails(message, senderNumber, userSession) {
-    const userInput = message.trim();
+    // Skip image processing if message is just for skipping image
+    if (message && message.toLowerCase().trim() === 'skip') {
+        delete userSession.imageUrl;
+        delete userSession.imagePublicId;
+        sendMessage(senderNumber, '⏭️ Continuing without image...');
+        return;
+    }
+    
+    const userInput = message ? message.trim() : '';
     let queryData = {};
     
     try {
@@ -184,20 +202,28 @@ async function submitQuery(senderNumber, userSession, queryData) {
             userSession.selectedRegion,
             userSession.selectedStore,
             userSession.queryType,
-            queryData
+            queryData,
+            userSession.imageUrl || null,
+            userSession.imagePublicId || null
         );
         
-        sendMessage(senderNumber, `✅ Query submitted successfully!
+        let confirmationMessage = `✅ Query submitted successfully! 
 
-Your Query ID: #${queryId}
+Your Query ID: #${queryId}`;
 
-Our team has been notified and will respond shortly.
+        if (userSession.imageUrl) {
+            confirmationMessage += '\n📷 Image attached successfully!';
+        }
 
-Thank you for using our support system!`);
+        confirmationMessage += '\n\nOur team has been notified and will respond shortly.\n\nThank you for using our support system!';
+        
+        sendMessage(senderNumber, confirmationMessage);
         
         userSession.step = 'main_menu';
         delete userSession.queryData;
         delete userSession.queryType;
+        delete userSession.imageUrl;
+        delete userSession.imagePublicId;
         
     } catch (error) {
         console.error('Error submitting query:', error);
