@@ -41,7 +41,7 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
     }
     
     // Reset command
-    if (message.toLowerCase().trim() === 'reset') {
+    if (message && message.toLowerCase().trim() === 'reset') {
         console.log('🔄 Resetting user session');
         await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);
         sendGreeting(senderNumber);
@@ -52,8 +52,8 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
     const userSession = await getSession(senderNumber);
     console.log('👤 User session step:', userSession.step);
     
-    // Handle image upload for certain steps
-    if (mediaUrl && (userSession.step === 'query_details' || userSession.step === 'approval' || userSession.step === 'document_details')) {
+    // Handle image upload for steps that support images
+    if (mediaUrl && shouldAcceptImage(userSession.step)) {
         try {
             const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_image`;
             const uploadResult = await downloadAndUploadFromTwilio(mediaUrl, fileName);
@@ -61,13 +61,17 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             userSession.imageUrl = uploadResult.url;
             userSession.imagePublicId = uploadResult.public_id;
             
-            sendMessage(senderNumber, '📷 Image received and uploaded successfully! Please continue with your request.');
+            sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nPlease continue with your request information.');
+            await saveSession(senderNumber, userSession);
+            return; // Wait for next message with text
         } catch (error) {
             console.error('Error processing image:', error);
-            sendMessage(senderNumber, '❌ Sorry, there was an error processing your image. Please continue with your request.');
+            sendMessage(senderNumber, '❌ Sorry, there was an error processing your image. Please try sending it again or continue without the image.');
+            return;
         }
     }
     
+    // Handle text messages based on current step
     switch (userSession.step) {
         case 'greeting':
             console.log('👋 Sending greeting to new user');
@@ -125,6 +129,11 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             await escalationHandler.handleEscalation(message, senderNumber, userSession);
             break;
             
+        case 'waiting_for_image':
+            console.log('🖼️ Waiting for image, asking user to send image');
+            sendMessage(senderNumber, '📷 Please send an image for your request, or type "skip" to continue without an image.');
+            break;
+            
         default:
             console.log('🔄 Unknown step, starting over');
             sendGreeting(senderNumber);
@@ -132,6 +141,12 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
     }
     
     await saveSession(senderNumber, userSession);
+}
+
+function shouldAcceptImage(step) {
+    // Steps that can accept images
+    const imageSteps = ['query_details', 'approval', 'document_details', 'waiting_for_image'];
+    return imageSteps.includes(step);
 }
 
 function sendGreeting(senderNumber) {
@@ -149,7 +164,7 @@ Please type:
 2 for RTB  
 3 for Welkom
 
-📷 You can send images along with your messages for document requests and approvals!`;
+📷 Note: You can send images with your requests for better support!`;
     
     sendMessage(senderNumber, greeting);
 }
@@ -237,7 +252,7 @@ Please type:
 4 for Training
 5 for Escalation
 
-📷 Tip: You can send images with your requests!`;
+📷 Tip: You can send images with your requests for better support!`;
     
     sendMessage(senderNumber, menu);
 }
