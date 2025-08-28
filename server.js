@@ -515,32 +515,31 @@ app.get('/', (req, res) => {
                         new Date(q.created_at).toDateString() === today
                     );
                     
-                    document.getElementById('stats').innerHTML = \`
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #6366f1;">\${filteredQueries.length}</div>
-                            <div class="stat-label">Total Queries</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #f59e0b;">\${filteredQueries.filter(q => q.status === 'pending').length}</div>
-                            <div class="stat-label">Pending</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #10b981;">\${filteredQueries.filter(q => q.status === 'completed').length}</div>
-                            <div class="stat-label">Completed</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #3b82f6;">\${filteredImages.length}</div>
-                            <div class="stat-label">Images</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #8b5cf6;">\${todayQueries.length}</div>
-                            <div class="stat-label">Today</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #06b6d4;">\${filteredQueries.filter(q => q.has_images).length}</div>
-                            <div class="stat-label">With Images</div>
-                        </div>
-                    \`;
+                    document.getElementById('stats').innerHTML = 
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #6366f1;">' + filteredQueries.length + '</div>' +
+                            '<div class="stat-label">Total Queries</div>' +
+                        '</div>' +
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #f59e0b;">' + filteredQueries.filter(q => q.status === 'pending').length + '</div>' +
+                            '<div class="stat-label">Pending</div>' +
+                        '</div>' +
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #10b981;">' + filteredQueries.filter(q => q.status === 'completed').length + '</div>' +
+                            '<div class="stat-label">Completed</div>' +
+                        '</div>' +
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #3b82f6;">' + filteredImages.length + '</div>' +
+                            '<div class="stat-label">Images</div>' +
+                        '</div>' +
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #8b5cf6;">' + todayQueries.length + '</div>' +
+                            '<div class="stat-label">Today</div>' +
+                        '</div>' +
+                        '<div class="stat-card">' +
+                            '<div class="stat-number" style="color: #06b6d4;">' + filteredQueries.filter(q => q.has_images).length + '</div>' +
+                            '<div class="stat-label">With Images</div>' +
+                        '</div>';
                 }
                 
                 function renderQueries() {
@@ -552,57 +551,49 @@ app.get('/', (req, res) => {
                         return;
                     }
                     
-                    container.innerHTML = filteredQueries.map(query => \`
-                        <div class="query-item">
-                            <div class="query-header">
-                                <div class="query-id">Query #\${query.query_id}</div>
-                                <div>
-                                    <span class="query-type">\${query.query_type.replace('_', ' ').toUpperCase()}</span>
-                                    <span class="status-badge status-\${query.status}">\${query.status.replace('_', ' ').toUpperCase()}</span>
-                                    \${query.has_images ? \`<span class="image-count">\${query.image_count || 0} images</span>\` : ''}
-                                </div>
-                            </div>
+                    container.innerHTML = filteredQueries.map(query => 
+                        '<div class="query-item">' +
+                            '<div class="query-header">' +
+                                '<div class="query-id">Query #' + query.query_id + '</div>' +
+                                '<div>' +
+                                    '<span class="query-type">' + query.query_type.replace('_', ' ').toUpperCase() + '</span>' +
+                                    '<span class="status-badge status-' + query.status + '">' + query.status.replace('_', ' ').toUpperCase() + '</span>' +
+                                    (query.has_images ? '<span class="image-count">' + (query.image_count || 0) + ' images</span>' : '') +
+                                '</div>' +
+                            '</div>' +
                             
-                            <div class="query-details">
-                                <div class="detail-item">
-                                    <span class="detail-label">User:</span> \${query.user_number}
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Store:</span> \${query.store} (\${query.region})
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Created:</span> \${new Date(query.created_at).toLocaleString()}
-                                </div>
-                            </div>
+                            '<div class="query-details">' +
+                                '<div class="detail-item">' +
+                                    '<span class="detail-label">User:</span> ' + query.user_number +
+                                '</div>' +
+                                '<div class="detail-item">' +
+                                    '<span class="detail-label">Store:</span> ' + query.store + ' (' + query.region + ')' +
+                                '</div>' +
+                                '<div class="detail-item">' +
+                                    '<span class="detail-label">Created:</span> ' + new Date(query.created_at).toLocaleString() +
+                                '</div>' +
+                            '</div>' +
                             
-                            <div class="detail-item">
-                                <span class="detail-label">Details:</span>
-                                <div class="query-data">\${JSON.stringify(query.query_data, null, 2)}</div>
-                            </div>
+                            '<div class="detail-item">' +
+                                '<span class="detail-label">Details:</span>' +
+                                '<div class="query-data">' + JSON.stringify(query.query_data, null, 2) + '</div>' +
+                            '</div>' +
                             
-                            \${query.status === 'pending' ? \`
-                                <div style="margin-top: 15px;">
-                                    <textarea 
-                                        id="response-\${query.id}" 
-                                        class="response-area"
-                                        placeholder="Enter your response..."
-                                    >\${query.team_response || ''}</textarea>
-                                    <div>
-                                        <button class="btn btn-success" onclick="respondToQuery(\${query.id}, 'completed')">
-                                            Complete
-                                        </button>
-                                        <button class="btn btn-danger" onclick="respondToQuery(\${query.id}, 'rejected')">
-                                            Reject
-                                        </button>
-                                        \${query.has_images ? \`<button class="btn btn-primary" onclick="viewQueryImages('\${query.query_id}')">View Images</button>\` : ''}
-                                    </div>
-                                </div>
-                            \` : \`
-                                \${query.team_response ? \`<div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px; margin-top: 10px;"><strong>Response:</strong> \${query.team_response}</div>\` : ''}
-                                \${query.has_images ? \`<button class="btn btn-primary" onclick="viewQueryImages('\${query.query_id}')" style="margin-top: 10px;">View Images</button>\` : ''}
-                            \`}
-                        </div>
-                    \`).join('');
+                            (query.status === 'pending' ? 
+                                '<div style="margin-top: 15px;">' +
+                                    '<textarea id="response-' + query.id + '" class="response-area" placeholder="Enter your response...">' + (query.team_response || '') + '</textarea>' +
+                                    '<div>' +
+                                        '<button class="btn btn-success" onclick="respondToQuery(' + query.id + ', \'completed\')">Complete</button>' +
+                                        '<button class="btn btn-danger" onclick="respondToQuery(' + query.id + ', \'rejected\')">Reject</button>' +
+                                        (query.has_images ? '<button class="btn btn-primary" onclick="viewQueryImages(\'' + query.query_id + '\')">View Images</button>' : '') +
+                                    '</div>' +
+                                '</div>' 
+                                : 
+                                (query.team_response ? '<div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px; margin-top: 10px;"><strong>Response:</strong> ' + query.team_response + '</div>' : '') +
+                                (query.has_images ? '<button class="btn btn-primary" onclick="viewQueryImages(\'' + query.query_id + '\')" style="margin-top: 10px;">View Images</button>' : '')
+                            ) +
+                        '</div>'
+                    ).join('');
                 }
                 
                 function renderImages() {
@@ -614,26 +605,25 @@ app.get('/', (req, res) => {
                         return;
                     }
                     
-                    container.innerHTML = \`
-                        <div class="image-gallery">
-                            \${filteredImages.map(image => \`
-                                <div class="image-card">
-                                    <img src="\${image.image_url}" alt="Query Image" onclick="openImageModal('\${image.image_url}')">
-                                    <div class="image-info">
-                                        <div class="image-query-id">Query #\${image.query_id}</div>
-                                        <div class="image-store">\${image.store} (\${image.region})</div>
-                                        <div style="color: #9ca3af; font-size: 0.7em; margin-top: 5px;">
-                                            \${new Date(image.uploaded_at).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            \`).join('')}
-                        </div>
-                    \`;
+                    container.innerHTML = 
+                        '<div class="image-gallery">' +
+                            filteredImages.map(image => 
+                                '<div class="image-card">' +
+                                    '<img src="' + image.image_url + '" alt="Query Image" onclick="openImageModal(\'' + image.image_url + '\')">' +
+                                    '<div class="image-info">' +
+                                        '<div class="image-query-id">Query #' + image.query_id + '</div>' +
+                                        '<div class="image-store">' + image.store + ' (' + image.region + ')</div>' +
+                                        '<div style="color: #9ca3af; font-size: 0.7em; margin-top: 5px;">' +
+                                            new Date(image.uploaded_at).toLocaleDateString() +
+                                        '</div>' +
+                                    '</div>' +
+                                '</div>'
+                            ).join('') +
+                        '</div>';
                 }
                 
                 async function respondToQuery(queryId, status) {
-                    const response = document.getElementById(\`response-\${queryId}\`).value;
+                    const response = document.getElementById('response-' + queryId).value;
                     
                     if (!response.trim()) {
                         alert('Please enter a response before submitting.');
@@ -644,7 +634,7 @@ app.get('/', (req, res) => {
                         await fetch('/admin/respond', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ queryId, response, status })
+                            body: JSON.stringify({ queryId: queryId, response: response, status: status })
                         });
                         
                         alert('Response sent successfully!');
@@ -656,24 +646,23 @@ app.get('/', (req, res) => {
                 
                 function openImageModal(imageUrl) {
                     const modal = document.createElement('div');
-                    modal.style.cssText = \`
-                        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                        background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
-                        align-items: center; z-index: 1000; cursor: pointer;
-                    \`;
+                    modal.style.cssText = 
+                        'position: fixed; top: 0; left: 0; width: 100%; height: 100%; ' +
+                        'background: rgba(0,0,0,0.8); display: flex; justify-content: center; ' +
+                        'align-items: center; z-index: 1000; cursor: pointer;';
                     
                     const img = document.createElement('img');
                     img.src = imageUrl;
                     img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 8px;';
                     
                     modal.appendChild(img);
-                    modal.onclick = () => document.body.removeChild(modal);
+                    modal.onclick = function() { document.body.removeChild(modal); };
                     document.body.appendChild(modal);
                 }
                 
                 async function viewQueryImages(queryId) {
                     try {
-                        const response = await fetch(\`/admin/images/query/\${queryId}\`);
+                        const response = await fetch('/admin/images/query/' + queryId);
                         const images = await response.json();
                         
                         if (images.length === 0) {
@@ -682,36 +671,33 @@ app.get('/', (req, res) => {
                         }
                         
                         const modal = document.createElement('div');
-                        modal.style.cssText = \`
-                            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                            background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
-                            align-items: center; z-index: 1000; padding: 20px;
-                        \`;
+                        modal.style.cssText = 
+                            'position: fixed; top: 0; left: 0; width: 100%; height: 100%; ' +
+                            'background: rgba(0,0,0,0.8); display: flex; justify-content: center; ' +
+                            'align-items: center; z-index: 1000; padding: 20px;';
                         
                         const content = document.createElement('div');
-                        content.style.cssText = \`
-                            background: white; padding: 20px; border-radius: 12px; 
-                            max-width: 80%; max-height: 80%; overflow-y: auto;
-                        \`;
+                        content.style.cssText = 
+                            'background: white; padding: 20px; border-radius: 12px; ' +
+                            'max-width: 80%; max-height: 80%; overflow-y: auto;';
                         
-                        content.innerHTML = \`
-                            <h3 style="margin-bottom: 20px;">Images for Query #\${queryId}</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                                \${images.map(image => \`
-                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                                        <img src="\${image.image_url}" style="width: 100%; height: 150px; object-fit: cover;">
-                                        <div style="padding: 10px; font-size: 0.8em;">
-                                            <div>\${image.image_name}</div>
-                                            <div style="color: #718096;">\${new Date(image.uploaded_at).toLocaleString()}</div>
-                                        </div>
-                                    </div>
-                                \`).join('')}
-                            </div>
-                            <button onclick="document.body.removeChild(this.closest('div').closest('div'))" 
-                                    style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                Close
-                            </button>
-                        \`;
+                        content.innerHTML = 
+                            '<h3 style="margin-bottom: 20px;">Images for Query #' + queryId + '</h3>' +
+                            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
+                                images.map(image => 
+                                    '<div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">' +
+                                        '<img src="' + image.image_url + '" style="width: 100%; height: 150px; object-fit: cover;">' +
+                                        '<div style="padding: 10px; font-size: 0.8em;">' +
+                                            '<div>' + image.image_name + '</div>' +
+                                            '<div style="color: #718096;">' + new Date(image.uploaded_at).toLocaleString() + '</div>' +
+                                        '</div>' +
+                                    '</div>'
+                                ).join('') +
+                            '</div>' +
+                            '<button onclick="document.body.removeChild(this.closest(\'div\').closest(\'div\'))" ' +
+                                    'style="margin-top: 20px; padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">' +
+                                'Close' +
+                            '</button>';
                         
                         modal.appendChild(content);
                         document.body.appendChild(modal);
