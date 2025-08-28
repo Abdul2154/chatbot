@@ -1,4 +1,5 @@
 const cloudinary = require('cloudinary').v2;
+const axios = require('axios');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -37,20 +38,25 @@ async function uploadImage(imageBuffer, fileName) {
 
 async function downloadAndUploadFromTwilio(mediaUrl, fileName) {
     try {
-        const fetch = require('node-fetch');
+        console.log('📥 Downloading image from Twilio:', mediaUrl);
         
-        // Download image from Twilio
-        const response = await fetch(mediaUrl, {
-            headers: {
-                'Authorization': `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}`
+        // Download image from Twilio using axios
+        const response = await axios({
+            method: 'get',
+            url: mediaUrl,
+            responseType: 'arraybuffer',
+            auth: {
+                username: process.env.TWILIO_ACCOUNT_SID,
+                password: process.env.TWILIO_AUTH_TOKEN
             }
         });
         
-        if (!response.ok) {
+        if (response.status !== 200) {
             throw new Error(`Failed to download image: ${response.statusText}`);
         }
         
-        const imageBuffer = await response.buffer();
+        const imageBuffer = Buffer.from(response.data);
+        console.log('✅ Image downloaded, size:', imageBuffer.length, 'bytes');
         
         // Upload to Cloudinary
         return await uploadImage(imageBuffer, fileName);
