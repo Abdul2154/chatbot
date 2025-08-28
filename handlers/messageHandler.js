@@ -61,8 +61,22 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             userSession.imageUrl = uploadResult.url;
             userSession.imagePublicId = uploadResult.public_id;
             
-            sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nPlease continue with your request information.');
+            console.log('📷 Image uploaded successfully:', uploadResult.url);
+            
+            // Keep user in current step, just save the image
             await saveSession(senderNumber, userSession);
+            
+            // Send confirmation and ask for text details
+            if (userSession.step === 'query_details') {
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your request details as text.');
+            } else if (userSession.step === 'approval') {
+                sendMessage(senderNumber, '📷 Payslip image received successfully!\n\nNow please send your approval details as text.');
+            } else if (userSession.step === 'document_details') {
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your document request details as text.');
+            } else {
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nPlease continue with your request.');
+            }
+            
             return; // Wait for next message with text
         } catch (error) {
             console.error('Error processing image:', error);
@@ -129,11 +143,6 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             await escalationHandler.handleEscalation(message, senderNumber, userSession);
             break;
             
-        case 'waiting_for_image':
-            console.log('🖼️ Waiting for image, asking user to send image');
-            sendMessage(senderNumber, '📷 Please send an image for your request, or type "skip" to continue without an image.');
-            break;
-            
         default:
             console.log('🔄 Unknown step, starting over');
             sendGreeting(senderNumber);
@@ -145,7 +154,7 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
 
 function shouldAcceptImage(step) {
     // Steps that can accept images
-    const imageSteps = ['query_details', 'approval', 'document_details', 'waiting_for_image'];
+    const imageSteps = ['query_details', 'approval', 'document_details'];
     return imageSteps.includes(step);
 }
 
@@ -155,9 +164,9 @@ function sendGreeting(senderNumber) {
     const greeting = `Hi! 👋 How can I help you today?
 
 Select Region:
-- Central
-- RTB
-- Welkom
+• Central
+• RTB
+• Welkom
 
 Please type:
 1 for Central
@@ -239,11 +248,11 @@ function showMainMenu(senderNumber) {
     console.log('📋 Showing main menu to:', senderNumber);
     
     const menu = `Main Menu:
-- Query
-- Over Sale Approval
-- Request Document
-- Training
-- Escalation
+• Query
+• Over Sale Approval
+• Request Document
+• Training
+• Escalation
 
 Please type:
 1 for Query
