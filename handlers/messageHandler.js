@@ -63,14 +63,14 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             
             console.log('📷 Image uploaded successfully:', uploadResult.url);
             
-            // Keep user in current step, just save the image
+            // Don't change the step - keep user in current step
             await saveSession(senderNumber, userSession);
             
             // Send confirmation and ask for text details
             if (userSession.step === 'query_details') {
                 sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your request details as text.');
             } else if (userSession.step === 'approval') {
-                sendMessage(senderNumber, '📷 Payslip image received successfully!\n\nNow please send your approval details as text.');
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your approval details as text.');
             } else if (userSession.step === 'document_details') {
                 sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your document request details as text.');
             } else {
