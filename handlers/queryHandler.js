@@ -28,12 +28,12 @@ async function handleQuery(message, senderNumber, userSession) {
             sendMessage(senderNumber, `📝 REFUND REQUEST
 
 Please provide the following information (one per line):
-- Employee Number
-- Bank Name
-- Account Number
-- Branch
-- Reason
-- Amount
+• Employee Number
+• Bank Name
+• Account Number
+• Branch
+• Reason
+• Amount
 
 📷 You can also send an image (receipt, proof) along with this information.
 
@@ -52,7 +52,7 @@ Wrong item delivered
             sendMessage(senderNumber, `💰 SYSTEM BALANCE
 
 Please provide:
-- Employee Number
+• Employee Number
 
 Example: EMP001`);
             break;
@@ -63,7 +63,7 @@ Example: EMP001`);
             sendMessage(senderNumber, `📋 STATIONERY REQUEST
 
 Please provide:
-- List of Items
+• List of Items
 
 📷 You can send an image showing what items you need.
 
@@ -79,9 +79,9 @@ Stapler - 2 pieces`);
             sendMessage(senderNumber, `👤 ADD NEW CUSTOMER
 
 Please provide the following information (one per line):
-- Employee Number
-- Name & Surname
-- Contact Number
+• Employee Number
+• Name & Surname
+• Contact Number
 
 📷 You can send an image of customer ID or documents.
 
@@ -97,7 +97,7 @@ John Smith
             sendMessage(senderNumber, `🔓 UNBLOCK CUSTOMER
 
 Please provide:
-- Employee Number
+• Employee Number
 
 📷 You can send supporting documents if needed.
 
@@ -110,7 +110,7 @@ Example: EMP001`);
             sendMessage(senderNumber, `📞 OPERATOR CALL BACK
 
 Please provide:
-- Nature of Emergency
+• Nature of Emergency
 
 📷 You can send screenshots of error messages if applicable.
 
@@ -219,6 +219,7 @@ Your Query ID: #${queryId}`;
         
         sendMessage(senderNumber, confirmationMessage);
         
+        // Reset session back to main menu
         userSession.step = 'main_menu';
         delete userSession.queryData;
         delete userSession.queryType;
