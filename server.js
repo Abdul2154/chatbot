@@ -57,6 +57,7 @@ app.post('/webhook', async (req, res) => {
 app.use('/admin', adminRoutes);
 
 // Admin panel with image support and store filtering
+// Admin panel with proper image display
 app.get('/', (req, res) => {
     const baseUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`;
     
@@ -67,6 +68,83 @@ app.get('/', (req, res) => {
             <title>WhatsApp Chatbot Admin Panel</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
+                /* Keep all existing styles and add these for images */
+                
+                .query-image {
+                    margin: 15px 0;
+                    padding: 10px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border: 1px solid #e2e8f0;
+                }
+                
+                .query-image img {
+                    max-width: 300px;
+                    max-height: 200px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                    cursor: pointer;
+                    transition: transform 0.2s ease;
+                }
+                
+                .query-image img:hover {
+                    transform: scale(1.05);
+                }
+                
+                .image-label {
+                    font-weight: 600;
+                    color: #4a5568;
+                    margin-bottom: 8px;
+                    display: block;
+                }
+                
+                .no-image {
+                    color: #9ca3af;
+                    font-style: italic;
+                    padding: 10px;
+                    text-align: center;
+                    background: #f9fafb;
+                    border-radius: 6px;
+                }
+                
+                .image-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.9);
+                    cursor: pointer;
+                }
+                
+                .image-modal img {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    max-width: 90%;
+                    max-height: 90%;
+                    border-radius: 8px;
+                }
+                
+                .image-modal .close-btn {
+                    position: absolute;
+                    top: 20px;
+                    right: 30px;
+                    color: white;
+                    font-size: 40px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    z-index: 1001;
+                }
+                
+                .image-modal .close-btn:hover {
+                    color: #ff6b6b;
+                }
+                
+                /* All your existing CSS styles here... */
                 body { 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
                     margin: 0; 
@@ -89,91 +167,6 @@ app.get('/', (req, res) => {
                     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 }
                 
-                .filters {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    margin-bottom: 20px;
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
-                }
-                
-                .filter-group {
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                .filter-group label {
-                    font-weight: 600;
-                    margin-bottom: 5px;
-                    color: #4a5568;
-                }
-                
-                .filter-group select {
-                    padding: 8px 12px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 6px;
-                    font-size: 14px;
-                }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 20px;
-                    margin-bottom: 30px;
-                }
-                
-                .stat-card {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    text-align: center;
-                }
-                
-                .stat-number {
-                    font-size: 2em;
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                }
-                
-                .stat-label {
-                    color: #718096;
-                    font-size: 0.9em;
-                }
-                
-                .status-sections {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 30px;
-                }
-                
-                .status-section {
-                    background: white;
-                    border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    overflow: hidden;
-                }
-                
-                .section-header {
-                    padding: 20px;
-                    font-weight: bold;
-                    font-size: 1.2em;
-                    border-bottom: 2px solid #e2e8f0;
-                }
-                
-                .pending-header { background: #fed7aa; color: #9a3412; }
-                .in-progress-header { background: #bfdbfe; color: #1e40af; }
-                .completed-header { background: #bbf7d0; color: #166534; }
-                .rejected-header { background: #fecaca; color: #991b1b; }
-                
-                .query-list {
-                    max-height: 600px;
-                    overflow-y: auto;
-                }
-                
                 .query {
                     border-bottom: 1px solid #e2e8f0;
                     padding: 20px;
@@ -182,10 +175,6 @@ app.get('/', (req, res) => {
                 
                 .query:hover {
                     background: #f7fafc;
-                }
-                
-                .query:last-child {
-                    border-bottom: none;
                 }
                 
                 .query-header {
@@ -236,23 +225,6 @@ app.get('/', (req, res) => {
                     margin: 10px 0;
                 }
                 
-                .query-image {
-                    margin: 10px 0;
-                }
-                
-                .query-image img {
-                    max-width: 300px;
-                    max-height: 200px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    cursor: pointer;
-                }
-                
-                .query-image img:hover {
-                    transform: scale(1.05);
-                    transition: transform 0.2s;
-                }
-                
                 .response-section {
                     margin-top: 15px;
                     padding-top: 15px;
@@ -300,34 +272,35 @@ app.get('/', (req, res) => {
                     transform: translateY(-1px);
                 }
                 
-                .btn-refresh {
-                    background: #3b82f6;
-                    color: white;
-                    padding: 12px 24px;
-                    font-size: 1em;
-                    margin-bottom: 20px;
+                /* Additional styles for sections */
+                .status-sections {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 30px;
                 }
                 
-                .btn-refresh:hover {
-                    background: #2563eb;
+                .status-section {
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    overflow: hidden;
                 }
                 
-                .btn-filter {
-                    background: #8b5cf6;
-                    color: white;
-                    padding: 8px 16px;
+                .section-header {
+                    padding: 20px;
+                    font-weight: bold;
+                    font-size: 1.2em;
+                    border-bottom: 2px solid #e2e8f0;
                 }
                 
-                .btn-filter:hover {
-                    background: #7c3aed;
-                }
+                .pending-header { background: #fed7aa; color: #9a3412; }
+                .in-progress-header { background: #bfdbfe; color: #1e40af; }
+                .completed-header { background: #bbf7d0; color: #166534; }
+                .rejected-header { background: #fecaca; color: #991b1b; }
                 
-                .team-response {
-                    background: #f0f9ff;
-                    border: 1px solid #bae6fd;
-                    padding: 12px;
-                    border-radius: 6px;
-                    margin-top: 10px;
+                .query-list {
+                    max-height: 600px;
+                    overflow-y: auto;
                 }
                 
                 .empty-state {
@@ -342,37 +315,12 @@ app.get('/', (req, res) => {
                     font-size: 0.8em;
                 }
                 
-                .image-modal {
-                    display: none;
-                    position: fixed;
-                    z-index: 1000;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(0,0,0,0.9);
-                    cursor: pointer;
-                }
-                
-                .image-modal img {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    max-width: 90%;
-                    max-height: 90%;
-                }
-                
                 @media (max-width: 768px) {
                     .status-sections {
                         grid-template-columns: 1fr;
                     }
                     
                     .query-details {
-                        grid-template-columns: 1fr;
-                    }
-                    
-                    .filters {
                         grid-template-columns: 1fr;
                     }
                 }
@@ -383,43 +331,7 @@ app.get('/', (req, res) => {
                 <div class="header">
                     <h1>🚀 WhatsApp Chatbot Admin Panel</h1>
                     <p>📷 Image Support Enabled | 🏪 Store Filtering Available</p>
-                    <button class="btn btn-refresh" onclick="loadQueries()">🔄 Refresh Dashboard</button>
-                </div>
-                
-                <!-- Filters Section -->
-                <div class="filters">
-                    <div class="filter-group">
-                        <label for="storeFilter">Filter by Store:</label>
-                        <select id="storeFilter" onchange="applyFilters()">
-                            <option value="all">All Stores</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="regionFilter">Filter by Region:</label>
-                        <select id="regionFilter" onchange="applyFilters()">
-                            <option value="all">All Regions</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="statusFilter">Filter by Status:</label>
-                        <select id="statusFilter" onchange="applyFilters()">
-                            <option value="all">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group" style="align-self: end;">
-                        <button class="btn btn-filter" onclick="clearFilters()">Clear Filters</button>
-                    </div>
-                </div>
-                
-                <div class="stats-grid" id="stats">
-                    <!-- Stats will be loaded here -->
+                    <button class="btn" style="background: #3b82f6; color: white; padding: 12px 24px;" onclick="loadQueries()">🔄 Refresh Dashboard</button>
                 </div>
                 
                 <div class="status-sections">
@@ -433,33 +345,11 @@ app.get('/', (req, res) => {
                     </div>
                     
                     <div class="status-section">
-                        <div class="section-header in-progress-header">
-                            🔄 In Progress (<span id="progress-count">0</span>)
+                        <div class="section-header completed-header">
+                            ✅ Completed Queries (<span id="completed-count">0</span>)
                         </div>
-                        <div class="query-list" id="progress-queries">
-                            <!-- In progress queries will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 30px;">
-                    <div class="status-sections">
-                        <div class="status-section">
-                            <div class="section-header completed-header">
-                                ✅ Completed Queries (<span id="completed-count">0</span>)
-                            </div>
-                            <div class="query-list" id="completed-queries">
-                                <!-- Completed queries will be loaded here -->
-                            </div>
-                        </div>
-                        
-                        <div class="status-section">
-                            <div class="section-header rejected-header">
-                                ❌ Rejected Queries (<span id="rejected-count">0</span>)
-                            </div>
-                            <div class="query-list" id="rejected-queries">
-                                <!-- Rejected queries will be loaded here -->
-                            </div>
+                        <div class="query-list" id="completed-queries">
+                            <!-- Completed queries will be loaded here -->
                         </div>
                     </div>
                 </div>
@@ -467,117 +357,34 @@ app.get('/', (req, res) => {
             
             <!-- Image Modal -->
             <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+                <span class="close-btn" onclick="closeImageModal()">&times;</span>
                 <img id="modalImage" src="" alt="Query Image">
             </div>
             
             <script>
-                let currentFilters = {
-                    store: 'all',
-                    region: 'all',
-                    status: 'all'
-                };
-                
                 async function loadQueries() {
                     try {
-                        // Build query string with filters
-                        const queryParams = new URLSearchParams();
-                        if (currentFilters.store !== 'all') queryParams.append('store', currentFilters.store);
-                        if (currentFilters.region !== 'all') queryParams.append('region', currentFilters.region);
-                        if (currentFilters.status !== 'all') queryParams.append('status', currentFilters.status);
-                        
-                        const response = await fetch('/admin/queries?' + queryParams.toString());
+                        const response = await fetch('/admin/queries');
                         const queries = await response.json();
-                        
-                        // Load filter options
-                        await loadFilterOptions();
                         
                         // Categorize queries by status
                         const categorized = {
                             pending: queries.filter(q => q.status === 'pending'),
-                            in_progress: queries.filter(q => q.status === 'in_progress'),
-                            completed: queries.filter(q => q.status === 'completed'),
-                            rejected: queries.filter(q => q.status === 'rejected')
+                            completed: queries.filter(q => q.status === 'completed')
                         };
-                        
-                        // Update stats
-                        await updateStats();
                         
                         // Update each section
                         updateSection('pending', categorized.pending);
-                        updateSection('progress', categorized.in_progress);
                         updateSection('completed', categorized.completed);
-                        updateSection('rejected', categorized.rejected);
                         
                     } catch (error) {
                         console.error('Error loading queries:', error);
                     }
                 }
                 
-                async function loadFilterOptions() {
-                    try {
-                        const response = await fetch('/admin/filters');
-                        const filters = await response.json();
-                        
-                        // Update store filter
-                        const storeFilter = document.getElementById('storeFilter');
-                        const currentStoreValue = storeFilter.value;
-                        storeFilter.innerHTML = '<option value="all">All Stores</option>';
-                        filters.stores.forEach(store => {
-                            const option = document.createElement('option');
-                            option.value = store;
-                            option.textContent = store;
-                            storeFilter.appendChild(option);
-                        });
-                        storeFilter.value = currentStoreValue;
-                        
-                        // Update region filter
-                        const regionFilter = document.getElementById('regionFilter');
-                        const currentRegionValue = regionFilter.value;
-                        regionFilter.innerHTML = '<option value="all">All Regions</option>';
-                        filters.regions.forEach(region => {
-                            const option = document.createElement('option');
-                            option.value = region;
-                            option.textContent = region.charAt(0).toUpperCase() + region.slice(1);
-                            regionFilter.appendChild(option);
-                        });
-                        regionFilter.value = currentRegionValue;
-                        
-                    } catch (error) {
-                        console.error('Error loading filter options:', error);
-                    }
-                }
-                
-                async function updateStats() {
-                    try {
-                        const response = await fetch('/admin/stats');
-                        const stats = await response.json();
-                        
-                        document.getElementById('stats').innerHTML = \`
-                            <div class="stat-card">
-                                <div class="stat-number" style="color: #f59e0b;">\${stats.pending || 0}</div>
-                                <div class="stat-label">Pending</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number" style="color: #10b981;">\${stats.completed || 0}</div>
-                                <div class="stat-label">Completed</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number" style="color: #6366f1;">\${stats.total || 0}</div>
-                                <div class="stat-label">Total Queries</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number" style="color: #8b5cf6;">\${stats.today || 0}</div>
-                                <div class="stat-label">Today</div>
-                            </div>
-                        \`;
-                    } catch (error) {
-                        console.error('Error updating stats:', error);
-                    }
-                }
-                
                 function updateSection(sectionName, queries) {
-                    const containerId = sectionName === 'progress' ? 'progress-queries' : \`\${sectionName}-queries\`;
-                    const countId = sectionName === 'progress' ? 'progress-count' : \`\${sectionName}-count\`;
+                    const containerId = \`\${sectionName}-queries\`;
+                    const countId = \`\${sectionName}-count\`;
                     
                     document.getElementById(countId).textContent = queries.length;
                     
@@ -607,8 +414,7 @@ app.get('/', (req, res) => {
                                     <span class="timestamp">\${new Date(query.created_at).toLocaleString()}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">🔄 Updated:</span> 
-                                    <span class="timestamp">\${new Date(query.updated_at).toLocaleString()}</span>
+                                    <span class="detail-label">📱 Contact:</span> \${query.contact_number || 'N/A'}
                                 </div>
                             </div>
                             
@@ -617,12 +423,14 @@ app.get('/', (req, res) => {
                                 <div class="query-data">\${JSON.stringify(query.query_data, null, 2)}</div>
                             </div>
                             
-                            \${query.image_url ? \`
-                                <div class="query-image">
-                                    <span class="detail-label">📷 Attached Image:</span><br>
+                            <div class="query-image">
+                                \${query.image_url && query.image_url !== 'null' && query.image_url !== '' ? \`
+                                    <span class="image-label">📷 Attached Image:</span>
                                     <img src="\${query.image_url}" alt="Query Image" onclick="openImageModal('\${query.image_url}')">
-                                </div>
-                            \` : ''}
+                                \` : \`
+                                    <div class="no-image">📷 No image attached</div>
+                                \`}
+                            </div>
                             
                             \${query.status === 'pending' ? \`
                                 <div class="response-section">
@@ -641,34 +449,12 @@ app.get('/', (req, res) => {
                                     </div>
                                 </div>
                             \` : query.team_response ? \`
-                                <div class="team-response">
+                                <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px; margin-top: 10px;">
                                     <strong>Team Response:</strong> \${query.team_response}
                                 </div>
                             \` : ''}
                         </div>
                     \`).join('');
-                }
-                
-                function applyFilters() {
-                    currentFilters.store = document.getElementById('storeFilter').value;
-                    currentFilters.region = document.getElementById('regionFilter').value;
-                    currentFilters.status = document.getElementById('statusFilter').value;
-                    
-                    loadQueries();
-                }
-                
-                function clearFilters() {
-                    document.getElementById('storeFilter').value = 'all';
-                    document.getElementById('regionFilter').value = 'all';
-                    document.getElementById('statusFilter').value = 'all';
-                    
-                    currentFilters = {
-                        store: 'all',
-                        region: 'all',
-                        status: 'all'
-                    };
-                    
-                    loadQueries();
                 }
                 
                 async function respondToQuery(queryId, status) {
@@ -715,9 +501,7 @@ app.get('/', (req, res) => {
         </body>
         </html>
     `);
-});
-
-// Error handling
+});// Error handling
 app.use((error, req, res, next) => {
     console.error('❌ Server error:', error);
     res.status(500).json({ 
