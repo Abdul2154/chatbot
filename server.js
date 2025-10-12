@@ -18,6 +18,7 @@ app.use(fileUpload({
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     abortOnLimit: true
 }));
+app.use(express.static('public'));
 
 // Initialize database
 initDatabase();
@@ -56,11 +57,15 @@ app.post('/webhook', async (req, res) => {
 // Admin panel routes
 app.use('/admin', adminRoutes);
 
-// Admin panel with image support and store filtering
-// Admin panel with proper image display
+// Serve the professional dashboard
 app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/dashboard.html');
+});
+
+// Old dashboard (backup) - remove this entire section if not needed
+app.get('/old-dashboard', (req, res) => {
     const baseUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`;
-    
+
     res.send(`
         <!DOCTYPE html>
         <html>
