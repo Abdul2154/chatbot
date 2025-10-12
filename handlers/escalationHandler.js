@@ -16,8 +16,10 @@ Example:
 Doornkop
 John Smith
 System not working, cannot process transactions
-0123456789`;
-    
+0123456789
+
+Type "menu" to return to main menu.`;
+
     sendMessage(senderNumber, message);
 }
 

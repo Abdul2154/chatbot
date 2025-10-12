@@ -13,8 +13,10 @@ Options:
 5. Unblock Customer
 6. Operator Call Back
 
-Please type the number (1-6):`;
-    
+Please type the number (1-6)
+
+Type "menu" to return to main menu.`;
+
     sendMessage(senderNumber, message);
 }
 
@@ -28,12 +30,12 @@ async function handleQuery(message, senderNumber, userSession) {
             sendMessage(senderNumber, `📝 REFUND REQUEST
 
 Please provide the following information (one per line):
-• Employee Number
-• Bank Name
-• Account Number
-• Branch
-• Reason
-• Amount
+- Employee Number
+- Bank Name
+- Account Number
+- Branch
+- Reason
+- Amount
 
 📷 You can also send an image (receipt, proof) along with this information.
 
@@ -43,7 +45,9 @@ Standard Bank
 1234567890
 Johannesburg
 Wrong item delivered
-500`);
+500
+
+Type "menu" to return to main menu.`);
             break;
             
         case '2':
@@ -52,9 +56,11 @@ Wrong item delivered
             sendMessage(senderNumber, `💰 SYSTEM BALANCE
 
 Please provide:
-• Employee Number
+- Employee Number
 
-Example: EMP001`);
+Example: EMP001
+
+Type "menu" to return to main menu.`);
             break;
             
         case '3':
@@ -63,14 +69,16 @@ Example: EMP001`);
             sendMessage(senderNumber, `📋 STATIONERY REQUEST
 
 Please provide:
-• List of Items
+- List of Items
 
 📷 You can send an image showing what items you need.
 
 Example:
 Pens - 10 pieces
 Paper - 5 reams
-Stapler - 2 pieces`);
+Stapler - 2 pieces
+
+Type "menu" to return to main menu.`);
             break;
             
         case '4':
@@ -79,16 +87,18 @@ Stapler - 2 pieces`);
             sendMessage(senderNumber, `👤 ADD NEW CUSTOMER
 
 Please provide the following information (one per line):
-• Employee Number
-• Name & Surname
-• Contact Number
+- Employee Number
+- Name & Surname
+- Contact Number
 
 📷 You can send an image of customer ID or documents.
 
 Example:
 EMP001
 John Smith
-0123456789`);
+0123456789
+
+Type "menu" to return to main menu.`);
             break;
             
         case '5':
@@ -97,11 +107,13 @@ John Smith
             sendMessage(senderNumber, `🔓 UNBLOCK CUSTOMER
 
 Please provide:
-• Employee Number
+- Employee Number
 
 📷 You can send supporting documents if needed.
 
-Example: EMP001`);
+Example: EMP001
+
+Type "menu" to return to main menu.`);
             break;
             
         case '6':
@@ -110,11 +122,13 @@ Example: EMP001`);
             sendMessage(senderNumber, `📞 OPERATOR CALL BACK
 
 Please provide:
-• Nature of Emergency
+- Nature of Emergency
 
 📷 You can send screenshots of error messages if applicable.
 
-Example: System down, cannot process sales`);
+Example: System down, cannot process sales
+
+Type "menu" to return to main menu.`);
             break;
             
         default:
@@ -194,6 +208,7 @@ function parseAddCustomerData(userInput) {
         contact_number: lines[2]
     };
 }
+
 async function submitQuery(senderNumber, userSession, queryData) {
     try {
         const queryId = await QueryModel.createQuery(
@@ -214,54 +229,20 @@ Your Query ID: #${queryId}`;
             confirmationMessage += '\n📷 Image attached successfully!';
         }
 
-        confirmationMessage += `
-
-📋 Summary:
-- Store: ${userSession.selectedStore} (${userSession.selectedRegion})
-- Type: ${userSession.queryType.replace('_', ' ').toUpperCase()}
-
-Our team has been notified and will respond shortly.
-
-Thank you for using our support system! 🙏`;
+        confirmationMessage += '\n\nOur team has been notified and will respond shortly.\n\nThank you for using our support system!';
         
         sendMessage(senderNumber, confirmationMessage);
         
-        // Reset session to main menu
         userSession.step = 'main_menu';
         delete userSession.queryData;
         delete userSession.queryType;
         delete userSession.imageUrl;
         delete userSession.imagePublicId;
         
-        // Show main menu again
-        setTimeout(() => {
-            showMainMenu(senderNumber);
-        }, 2000); // Wait 2 seconds before showing main menu
-        
     } catch (error) {
         console.error('Error submitting query:', error);
         sendMessage(senderNumber, 'Sorry, there was an error submitting your query. Please try again later.');
     }
-}
-
-function showMainMenu(senderNumber) {
-    const menu = `Main Menu:
-- Query
-- Over Sale Approval
-- Request Document
-- Training
-- Escalation
-
-Please type:
-1 for Query
-2 for Over Sale Approval
-3 for Request Document
-4 for Training
-5 for Escalation
-
-📷 Tip: You can send images with your requests for better support!`;
-    
-    sendMessage(senderNumber, menu);
 }
 
 module.exports = { showQueryOptions, handleQuery, handleQueryDetails };

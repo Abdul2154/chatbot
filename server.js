@@ -182,21 +182,24 @@ app.get('/', (req, res) => {
                     justify-content: space-between;
                     align-items: center;
                     margin-bottom: 15px;
+                    padding-bottom: 12px;
+                    border-bottom: 2px solid #e2e8f0;
                 }
-                
+
                 .query-id {
                     font-weight: bold;
-                    font-size: 1.1em;
-                    color: #2d3748;
+                    font-size: 1.2em;
+                    color: #1e3a8a;
                 }
-                
+
                 .query-type {
-                    background: #edf2f7;
-                    color: #4a5568;
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    font-size: 0.8em;
-                    font-weight: 500;
+                    background: #dbeafe;
+                    color: #1e40af;
+                    padding: 6px 12px;
+                    border-radius: 8px;
+                    font-size: 0.85em;
+                    font-weight: 600;
+                    border: 1px solid #93c5fd;
                 }
                 
                 .query-details {
@@ -211,18 +214,20 @@ app.get('/', (req, res) => {
                 }
                 
                 .detail-label {
-                    font-weight: 600;
-                    color: #4a5568;
+                    font-weight: 700;
+                    color: #374151;
+                    font-size: 0.95em;
                 }
                 
                 .query-data {
-                    background: #f7fafc;
-                    padding: 12px;
-                    border-radius: 6px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 0.8em;
+                    background: #f0f9ff;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 1px solid #bae6fd;
+                    font-size: 0.9em;
                     white-space: pre-wrap;
                     margin: 10px 0;
+                    line-height: 1.6;
                 }
                 
                 .response-section {
@@ -395,51 +400,70 @@ app.get('/', (req, res) => {
                         return;
                     }
                     
-                    container.innerHTML = queries.map(query => \`
+                    container.innerHTML = queries.map(query => {
+                        // Format query data in a more readable way
+                        let formattedData = '';
+                        try {
+                            const data = query.query_data;
+                            formattedData = Object.entries(data).map(([key, value]) => {
+                                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                return \`<div style="margin-bottom: 8px;"><strong>\${label}:</strong> \${value}</div>\`;
+                            }).join('');
+                        } catch (e) {
+                            formattedData = JSON.stringify(query.query_data, null, 2);
+                        }
+
+                        return \`
                         <div class="query">
                             <div class="query-header">
                                 <div class="query-id">Query #\${query.query_id}</div>
                                 <div class="query-type">\${query.query_type.replace(/_/g, ' ').toUpperCase()}</div>
                             </div>
-                            
+
                             <div class="query-details">
                                 <div class="detail-item">
                                     <span class="detail-label">👤 User:</span> \${query.user_number}
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">🏪 Store:</span> \${query.store} (\${query.region})
+                                    <span class="detail-label">🏪 Store:</span> \${query.store}
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">📅 Created:</span> 
+                                    <span class="detail-label">🌍 Region:</span> \${query.region.toUpperCase()}
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">📅 Created:</span>
                                     <span class="timestamp">\${new Date(query.created_at).toLocaleString()}</span>
                                 </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">📱 Contact:</span> \${query.contact_number || 'N/A'}
-                                </div>
                             </div>
-                            
-                            <div class="detail-item">
-                                <span class="detail-label">📋 Details:</span>
-                                <div class="query-data">\${JSON.stringify(query.query_data, null, 2)}</div>
+
+                            <div class="detail-item" style="margin-top: 15px;">
+                                <span class="detail-label" style="display: block; margin-bottom: 10px; font-size: 1.05em;">📋 Request Details:</span>
+                                <div class="query-data">\${formattedData}</div>
                             </div>
-                            
+
                             <div class="query-image">
                                 \${query.image_url && query.image_url !== 'null' && query.image_url !== '' ? \`
-                                    <span class="image-label">📷 Attached Image:</span>
-                                    <img src="\${query.image_url}" alt="Query Image" onclick="openImageModal('\${query.image_url}')">
+                                    <span class="image-label">📷 Attached Image (click to enlarge):</span>
+                                    <div style="margin-top: 10px;">
+                                        <img src="\${query.image_url}" alt="Query Image" onclick="openImageModal('\${query.image_url}')"
+                                             title="Click to view full size">
+                                    </div>
                                 \` : \`
                                     <div class="no-image">📷 No image attached</div>
                                 \`}
                             </div>
-                            
+
                             \${query.status === 'pending' ? \`
                                 <div class="response-section">
-                                    <textarea 
-                                        id="response-\${query.id}" 
+                                    <label style="font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">
+                                        ✍️ Your Response:
+                                    </label>
+                                    <textarea
+                                        id="response-\${query.id}"
                                         class="response-area"
                                         placeholder="Enter your response to the user..."
                                     >\${query.team_response || ''}</textarea>
-                                    <div>
+                                    <div style="display: flex; gap: 10px;">
                                         <button class="btn btn-complete" onclick="respondToQuery(\${query.id}, 'completed')">
                                             ✅ Send Response & Complete
                                         </button>
@@ -449,12 +473,14 @@ app.get('/', (req, res) => {
                                     </div>
                                 </div>
                             \` : query.team_response ? \`
-                                <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px; margin-top: 10px;">
-                                    <strong>Team Response:</strong> \${query.team_response}
+                                <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                    <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">✅ Team Response:</div>
+                                    <div style="color: #047857;">\${query.team_response}</div>
                                 </div>
                             \` : ''}
                         </div>
-                    \`).join('');
+                    \`;
+                    }).join('');
                 }
                 
                 async function respondToQuery(queryId, status) {

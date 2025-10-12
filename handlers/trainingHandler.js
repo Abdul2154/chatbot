@@ -13,8 +13,10 @@ Options:
 6. Viewing Balances
 7. Printing
 
-Please type the number (1-7):`;
-    
+Please type the number (1-7)
+
+Type "menu" to return to main menu.`;
+
     sendMessage(senderNumber, message);
 }
 

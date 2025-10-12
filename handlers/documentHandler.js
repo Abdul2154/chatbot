@@ -11,8 +11,10 @@ Which document do you need?
 4. Leave Form (Send preloaded downloadable PDF)
 5. TD Statement Report (Submit formal request)
 
-Please type the number (1-5):`;
-    
+Please type the number (1-5)
+
+Type "menu" to return to main menu.`;
+
     sendMessage(senderNumber, message);
 }
 
@@ -25,7 +27,7 @@ async function handleDocument(message, senderNumber, userSession) {
             userSession.step = 'document_details';
             sendMessage(senderNumber, `📄 TD DOCUMENT
 
-You can upload an image if needed.
+📷 You can upload an image if needed.
 
 Please provide the following information (one per line):
 - Employee Name
@@ -35,7 +37,9 @@ Please provide the following information (one per line):
 Example:
 John Smith
 Doornkop
-0123456789`);
+0123456789
+
+Type "menu" to return to main menu.`);
             break;
             
         case '2':
@@ -43,7 +47,7 @@ Doornkop
             userSession.step = 'document_details';
             sendMessage(senderNumber, `📊 GRN STATEMENT
 
-You can upload an image if needed.
+📷 You can upload an image if needed.
 
 Please provide the following information (one per line):
 - Employee Name
@@ -53,7 +57,9 @@ Please provide the following information (one per line):
 Example:
 John Smith
 Doornkop
-0123456789`);
+0123456789
+
+Type "menu" to return to main menu.`);
             break;
             
         case '3':
@@ -71,7 +77,9 @@ Please provide the following information (one per line):
 Example:
 John Smith
 Doornkop
-0123456789`);
+0123456789
+
+Type "menu" to return to main menu.`);
             break;
             
         case '4':
@@ -116,7 +124,9 @@ Please provide the following information (one per line):
 Example:
 John Smith
 Doornkop
-0123456789`);
+0123456789
+
+Type "menu" to return to main menu.`);
             break;
             
         default:
@@ -155,28 +165,36 @@ Doornkop
             userSession.selectedRegion,
             userSession.selectedStore,
             userSession.documentType,
-            documentData
+            documentData,
+            userSession.imageUrl || null,
+            userSession.imagePublicId || null
         );
-        
+
         const docTypes = {
-            'td_document': 'TD Document (image upload allowed)',
-            'grn_statement': 'GRN Statement (image upload allowed)',
+            'td_document': 'TD Document',
+            'grn_statement': 'GRN Statement',
             'stock_sheet': 'Stock Sheet (Head Office notified)',
-            'td_statement_report': 'TD Statement Report (formal request)'
+            'td_statement_report': 'TD Statement Report'
         };
-        
-        sendMessage(senderNumber, `✅ ${docTypes[userSession.documentType]} request submitted successfully!
 
-Query ID: #${queryId}
+        let confirmationMessage = `✅ ${docTypes[userSession.documentType]} request submitted successfully!
 
-You will receive your document shortly.
+Query ID: #${queryId}`;
 
-Thank you!`);
-        
+        if (userSession.imageUrl) {
+            confirmationMessage += '\n📷 Supporting image attached successfully!';
+        }
+
+        confirmationMessage += '\n\nYou will receive your document shortly.\n\nThank you!';
+
+        sendMessage(senderNumber, confirmationMessage);
+
         userSession.step = 'main_menu';
         delete userSession.documentData;
         delete userSession.documentType;
-        
+        delete userSession.imageUrl;
+        delete userSession.imagePublicId;
+
     } catch (error) {
         console.error('Error submitting document request:', error);
         sendMessage(senderNumber, 'Sorry, there was an error submitting your document request. Please try again later.');

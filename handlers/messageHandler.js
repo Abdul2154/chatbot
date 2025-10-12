@@ -47,6 +47,22 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
         await saveSession(senderNumber, { step: 'select_region' });
         return;
     }
+
+    // Menu command - go back to main menu
+    if (message && message.toLowerCase().trim() === 'menu') {
+        console.log('📋 Returning to main menu');
+        const userSession = await getSession(senderNumber);
+        userSession.step = 'main_menu';
+        // Clear any temporary data
+        delete userSession.queryType;
+        delete userSession.queryData;
+        delete userSession.imageUrl;
+        delete userSession.imagePublicId;
+        delete userSession.documentType;
+        await saveSession(senderNumber, userSession);
+        showMainMenu(senderNumber);
+        return;
+    }
     
     const userSession = await getSession(senderNumber);
     console.log('👤 User session step:', userSession.step);
@@ -59,21 +75,22 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             
             userSession.imageUrl = uploadResult.url;
             userSession.imagePublicId = uploadResult.public_id;
-            
+
             console.log('✅ Image uploaded successfully:', uploadResult.url);
-            
+
+            await saveSession(senderNumber, userSession);
+
             // Send confirmation and ask for text details
             if (userSession.step === 'query_details') {
-                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please provide your query details in text format.');
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your request details as text.\n\nType "menu" to return to main menu.');
             } else if (userSession.step === 'approval') {
-                sendMessage(senderNumber, '📷 Payslip image received successfully!\n\nNow please provide your approval details in text format.');
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your approval details as text.\n\nType "menu" to return to main menu.');
             } else if (userSession.step === 'document_details') {
-                sendMessage(senderNumber, '📷 Supporting image received successfully!\n\nNow please provide your document request details in text format.');
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nNow please send your document request details as text.\n\nType "menu" to return to main menu.');
             } else {
-                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nPlease continue with your request information.');
+                sendMessage(senderNumber, '📷 Image received and uploaded successfully!\n\nPlease continue with your request.\n\nType "menu" to return to main menu.');
             }
-            
-            await saveSession(senderNumber, userSession);
+
             return; // Wait for next message with text
             
         } catch (error) {
@@ -157,7 +174,7 @@ function shouldAcceptImage(step) {
 
 function sendGreeting(senderNumber) {
     console.log('👋 Sending greeting to:', senderNumber);
-    
+
     const greeting = `Hi! 👋 How can I help you today?
 
 Select Region:
@@ -167,11 +184,11 @@ Select Region:
 
 Please type:
 1 for Central
-2 for RTB  
+2 for RTB
 3 for Welkom
 
 📷 Note: You can send images with your requests for better support!`;
-    
+
     sendMessage(senderNumber, greeting);
 }
 
@@ -243,7 +260,7 @@ async function handleMainMenu(message, senderNumber, userSession) {
 
 function showMainMenu(senderNumber) {
     console.log('📋 Showing main menu to:', senderNumber);
-    
+
     const menu = `Main Menu:
 • Query
 • Over Sale Approval
@@ -258,8 +275,10 @@ Please type:
 4 for Training
 5 for Escalation
 
-📷 Tip: You can send images with your requests for better support!`;
-    
+📷 Tip: You can send images with your requests for better support!
+
+Type "reset" to start over from region selection.`;
+
     sendMessage(senderNumber, menu);
 }
 

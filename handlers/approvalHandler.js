@@ -7,7 +7,7 @@ function showApprovalForm(senderNumber) {
 Please upload your latest payslip and fill in the following:
 
 Please provide (one per line):
-- Employee number 
+- Employee number
 - Requested Approval Amount
 - Net Pay Amount
 
@@ -16,8 +16,10 @@ EMP001
 5000
 15000
 
-Note: Please also upload your latest payslip if possible.`;
-    
+📷 You can also send your latest payslip image before or after entering the details.
+
+Type "menu" to return to main menu.`;
+
     sendMessage(senderNumber, message);
 }
 
@@ -51,21 +53,29 @@ EMP001
             userSession.selectedRegion,
             userSession.selectedStore,
             'over_sale_approval',
-            approvalData
+            approvalData,
+            userSession.imageUrl || null,
+            userSession.imagePublicId || null
         );
-        
-        sendMessage(senderNumber, `✅ Over Sale Approval request submitted successfully!
 
-Query ID: #${queryId}
+        let confirmationMessage = `✅ Over Sale Approval request submitted successfully!
 
-Your request will be forwarded to manager/approver for review.
+Query ID: #${queryId}`;
 
-Please upload your latest payslip if you haven't already.
+        if (userSession.imageUrl) {
+            confirmationMessage += '\n📷 Payslip image attached successfully!';
+        } else {
+            confirmationMessage += '\n\nNote: You can upload your payslip later if needed.';
+        }
 
-Thank you!`);
-        
+        confirmationMessage += '\n\nYour request will be forwarded to manager/approver for review.\n\nThank you!';
+
+        sendMessage(senderNumber, confirmationMessage);
+
         userSession.step = 'main_menu';
-        
+        delete userSession.imageUrl;
+        delete userSession.imagePublicId;
+
     } catch (error) {
         console.error('Error submitting approval:', error);
         sendMessage(senderNumber, 'Sorry, there was an error submitting your approval request. Please try again later.');
