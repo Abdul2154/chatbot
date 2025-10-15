@@ -12,8 +12,9 @@ Options:
 4. Add New Customer
 5. Unblock Customer
 6. Operator Call Back
+7. Credit Notes
 
-Please type the number (1-6)
+Please type the number (1-7)
 
 Type "menu" to return to main menu.`;
 
@@ -130,9 +131,31 @@ Example: System down, cannot process sales
 
 Type "menu" to return to main menu.`);
             break;
-            
+
+        case '7':
+            userSession.queryType = 'credit_notes';
+            userSession.step = 'query_details';
+            sendMessage(senderNumber, `📝 CREDIT NOTES
+
+Please provide the following information (one per line):
+- Employee Number
+- Credit Note Number
+- Amount
+- Reason
+
+📷 You can send an image of the credit note for reference.
+
+Example:
+EMP001
+CN12345
+1500
+Returned damaged goods
+
+Type "menu" to return to main menu.`);
+            break;
+
         default:
-            sendMessage(senderNumber, 'Please select a valid option (1-6)');
+            sendMessage(senderNumber, 'Please select a valid option (1-7)');
     }
 }
 
@@ -144,10 +167,10 @@ async function handleQueryDetails(message, senderNumber, userSession) {
         sendMessage(senderNumber, '⏭️ Continuing without image...');
         return;
     }
-    
+
     const userInput = message ? message.trim() : '';
     let queryData = {};
-    
+
     try {
         switch (userSession.queryType) {
             case 'refund_request':
@@ -167,6 +190,9 @@ async function handleQueryDetails(message, senderNumber, userSession) {
                 break;
             case 'operator_call_back':
                 queryData = { nature_of_emergency: userInput };
+                break;
+            case 'credit_notes':
+                queryData = parseCreditNotesData(userInput);
                 break;
         }
         
@@ -197,15 +223,30 @@ function parseRefundData(userInput) {
 
 function parseAddCustomerData(userInput) {
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
-    
+
     if (lines.length < 3) {
         throw new Error('All 3 fields required: Employee Number, Name & Surname, Contact Number');
     }
-    
+
     return {
         employee_number: lines[0],
         name_surname: lines[1],
         contact_number: lines[2]
+    };
+}
+
+function parseCreditNotesData(userInput) {
+    const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
+
+    if (lines.length < 4) {
+        throw new Error('All 4 fields required: Employee Number, Credit Note Number, Amount, Reason');
+    }
+
+    return {
+        employee_number: lines[0],
+        credit_note_number: lines[1],
+        amount: lines[2],
+        reason: lines[3]
     };
 }
 

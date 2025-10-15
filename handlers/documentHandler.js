@@ -30,14 +30,14 @@ async function handleDocument(message, senderNumber, userSession) {
 📷 You can upload an image if needed.
 
 Please provide the following information (one per line):
-- Employee Name
-- Store
-- Contact Number
+- GRN Number
+- From Store
+- To Store
 
 Example:
-John Smith
+GRN12345
 Doornkop
-0123456789
+Johannesburg Central
 
 Type "menu" to return to main menu.`);
             break;
@@ -137,9 +137,22 @@ Type "menu" to return to main menu.`);
 async function handleDocumentDetails(message, senderNumber, userSession) {
     const userInput = message.trim();
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
-    
+
     if (lines.length < 3) {
-        sendMessage(senderNumber, `❌ Please provide all required information:
+        // Different validation message based on document type
+        if (userSession.documentType === 'td_document') {
+            sendMessage(senderNumber, `❌ Please provide all required information:
+
+- GRN Number
+- From Store
+- To Store
+
+Example:
+GRN12345
+Doornkop
+Johannesburg Central`);
+        } else {
+            sendMessage(senderNumber, `❌ Please provide all required information:
 
 - Employee Name
 - Store
@@ -149,15 +162,27 @@ Example:
 John Smith
 Doornkop
 0123456789`);
+        }
         return;
     }
-    
-    const documentData = {
-        employee_name: lines[0],
-        store: lines[1],
-        contact_number: lines[2],
-        document_type: userSession.documentType
-    };
+
+    // Different data structure for TD Document
+    let documentData;
+    if (userSession.documentType === 'td_document') {
+        documentData = {
+            grn_number: lines[0],
+            from_store: lines[1],
+            to_store: lines[2],
+            document_type: userSession.documentType
+        };
+    } else {
+        documentData = {
+            employee_name: lines[0],
+            store: lines[1],
+            contact_number: lines[2],
+            document_type: userSession.documentType
+        };
+    }
     
     try {
         const queryId = await QueryModel.createQuery(
