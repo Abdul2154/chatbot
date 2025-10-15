@@ -1,5 +1,4 @@
 const { sendMessage } = require('../utils/twilioClient');
-const { showMainMenu } = require('../utils/menuHelper');
 const storeHandler = require('./storeHandler');
 const queryHandler = require('./queryHandler');
 const approvalHandler = require('./approvalHandler');
@@ -35,11 +34,21 @@ async function saveSession(userNumber, sessionData) {
 }
 async function handleMessage(message, senderNumber, mediaUrl = null, mediaContentType = null) {
     console.log('🔄 Processing message:', message, 'from:', senderNumber);
-    
+
     if (mediaUrl) {
         console.log('📷 Image received:', mediaUrl);
     }
-    
+
+    // Greeting detection - reset to start
+    const greetings = ['hello', 'hi', 'hey', 'start', 'hola', 'greetings'];
+    if (message && greetings.includes(message.toLowerCase().trim())) {
+        console.log('👋 Greeting detected, starting fresh session');
+        await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);
+        sendGreeting(senderNumber);
+        await saveSession(senderNumber, { step: 'select_region' });
+        return;
+    }
+
     // Reset command
     if (message && message.toLowerCase().trim() === 'reset') {
         console.log('🔄 Resetting user session');
@@ -259,4 +268,28 @@ async function handleMainMenu(message, senderNumber, userSession) {
     }
 }
 
-module.exports = { handleMessage };
+function showMainMenu(senderNumber) {
+    console.log('📋 Showing main menu to:', senderNumber);
+
+    const menu = `Main Menu:
+• Query
+• Over Sale Approval
+• Request Document
+• Training
+• Escalation
+
+Please type:
+1 for Query
+2 for Over Sale Approval
+3 for Request Document
+4 for Training
+5 for Escalation
+
+📷 Tip: You can send images with your requests for better support!
+
+Type "reset" to start over from region selection.`;
+
+    sendMessage(senderNumber, menu);
+}
+
+module.exports = { handleMessage, showMainMenu };

@@ -1,6 +1,5 @@
 const { sendMessage } = require('../utils/twilioClient');
 const { getStoresByRegion } = require('../config/stores');
-const { showMainMenu } = require('../utils/menuHelper');
 
 function showStoreOptions(senderNumber, region) {
     const stores = getStoresByRegion(region);
@@ -24,6 +23,9 @@ function handleStoreSelection(message, senderNumber, userSession) {
 
         // Show main menu after store selection
         userSession.step = 'main_menu';
+
+        // Lazy load to avoid circular dependency
+        const { showMainMenu } = require('./messageHandler');
         showMainMenu(senderNumber);
     } else {
         sendMessage(senderNumber, 'Invalid selection. Please choose a valid store number.');
