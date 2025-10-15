@@ -1,6 +1,6 @@
 const { sendMessage } = require('../utils/twilioClient');
 const { getStoresByRegion } = require('../config/stores');
-const { showMainMenu } = require('./messageHandler');
+const { showMainMenu } = require('../utils/menuHelper');
 
 function showStoreOptions(senderNumber, region) {
     const stores = getStoresByRegion(region);
