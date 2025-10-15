@@ -25,10 +25,10 @@ initDatabase();
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'healthy', 
+    res.json({
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-        features: ['image_upload', 'store_filtering', 'cloudinary']
+        features: ['image_upload', 'store_filtering', 'imgbb']
     });
 });
 
@@ -546,6 +546,6 @@ app.listen(port, '0.0.0.0', () => {
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📱 WhatsApp webhook: ${process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`}/webhook`);
     console.log(`🖥️  Admin panel: ${process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`}`);
-    console.log(`📷 Image upload: Cloudinary enabled`);
+    console.log(`📷 Image upload: ImgBB enabled`);
     console.log(`🏪 Store filtering: Available`);
 });

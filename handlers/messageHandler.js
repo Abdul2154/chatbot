@@ -6,7 +6,7 @@ const documentHandler = require('./documentHandler');
 const trainingHandler = require('./trainingHandler');
 const escalationHandler = require('./escalationHandler');
 const { pool } = require('../config/database');
-const { downloadAndUploadFromTwilio } = require('../config/cloudinary');
+const { downloadAndUploadFromTwilio } = require('../config/imgbb');
 
 // Database session management
 async function getSession(userNumber) {
