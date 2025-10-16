@@ -4,8 +4,7 @@ const stores = {
         'Kus',
         'Mponeng',
         'Moab hostel',
-        'Moab shaft',
-        'Marula'
+        'Moab shaft'
     ],
     welkom: [
         'Tshepong',
@@ -26,7 +25,8 @@ const stores = {
         'Ratanang',
         'Hospital',
         'Simunye',
-        'Target'
+        'Target',
+        'Marula'
     ]
 };
 
