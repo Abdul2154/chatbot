@@ -102,14 +102,14 @@ Details: ${JSON.stringify(queryData, null, 2)}`;
         }
     }
 
-    static async updateQueryResponse(queryId, response, status) {
+    static async updateQueryResponse(queryId, response, status, skipMessage = false) {
         try {
             const result = await pool.query(
                 'UPDATE queries SET team_response = $1, status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
                 [response, status, queryId]
             );
 
-            if (result.rowCount > 0) {
+            if (result.rowCount > 0 && !skipMessage) {
                 const query = result.rows[0];
                 const statusEmoji = status === 'completed' ? '✅' : '❌';
                 const userMessage = `${statusEmoji} Response to your query #${query.query_id}:
@@ -138,6 +138,19 @@ Thank you for using our support system!`;
             return result.rows;
         } catch (error) {
             console.error('Error getting user queries:', error);
+            throw error;
+        }
+    }
+
+    static async getQueryById(queryId) {
+        try {
+            const result = await pool.query(
+                'SELECT * FROM queries WHERE id = $1',
+                [queryId]
+            );
+            return result.rows.length > 0 ? result.rows[0] : null;
+        } catch (error) {
+            console.error('Error getting query by ID:', error);
             throw error;
         }
     }

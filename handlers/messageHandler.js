@@ -7,6 +7,8 @@ const trainingHandler = require('./trainingHandler');
 const escalationHandler = require('./escalationHandler');
 const { pool } = require('../config/database');
 const { downloadAndUploadFromTwilio } = require('../config/imgbb');
+const { downloadAndProcessExcelFromTwilio, isExcelFile } = require('../config/excelHandler');
+const QueryModel = require('../models/queries');
 
 // Database session management
 async function getSession(userNumber) {
@@ -76,7 +78,62 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
     
     const userSession = await getSession(senderNumber);
     console.log('👤 User session step:', userSession.step);
-    
+
+    // Handle Excel file upload for bulk customer addition
+    if (mediaUrl && mediaContentType && isExcelFile(mediaContentType)) {
+        try {
+            console.log('📊 Excel file detected, processing...');
+
+            const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_customers`;
+            const excelResult = await downloadAndProcessExcelFromTwilio(mediaUrl, fileName);
+
+            // Create a query entry for bulk customer addition
+            const queryId = await QueryModel.createQuery(
+                senderNumber,
+                userSession.selectedRegion || 'unknown',
+                userSession.selectedStore || 'unknown',
+                'bulk_customer_addition',
+                {
+                    document_type: 'customer_excel',
+                    total_customers: excelResult.customerData.totalRecords,
+                    customers: excelResult.customerData.customers,
+                    headers: excelResult.customerData.headers,
+                    file_name: fileName
+                },
+                excelResult.url,
+                excelResult.public_id
+            );
+
+            const confirmationMessage = `✅ Excel file received and processed successfully!
+
+Query ID: #${queryId}
+📊 Total Customers Found: ${excelResult.customerData.totalRecords}
+
+Your bulk customer addition request has been submitted. Our team will review and add these customers to the system.
+
+📄 The Excel file has been saved and can be downloaded from the admin dashboard.
+
+Thank you!`;
+
+            sendMessage(senderNumber, confirmationMessage);
+
+            console.log(`✅ Bulk customer addition processed: ${excelResult.customerData.totalRecords} customers`);
+            return;
+
+        } catch (error) {
+            console.error('Error processing Excel file:', error);
+            sendMessage(senderNumber, `❌ Sorry, there was an error processing your Excel file.
+
+Please make sure:
+- The file is a valid Excel file (.xlsx or .xls)
+- It contains customer data with headers in the first row
+- Common headers: Name, Contact Number, etc.
+
+Please try again or contact support if the issue persists.`);
+            return;
+        }
+    }
+
     // Handle image upload for steps that support images
     if (mediaUrl && shouldAcceptImage(userSession.step)) {
         try {

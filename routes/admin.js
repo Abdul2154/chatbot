@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const QueryModel = require('../models/queries');
+const { uploadImage } = require('../config/imgbb');
 
 // Get all queries with filtering
 router.get('/queries', async (req, res) => {
@@ -25,12 +26,68 @@ router.get('/filters', async (req, res) => {
     }
 });
 
+// Upload file from dashboard
+router.post('/upload-file', async (req, res) => {
+    try {
+        if (!req.files || !req.files.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const file = req.files.file;
+        const fileName = `dashboard_${Date.now()}_${file.name}`;
+
+        console.log('📤 Uploading file from dashboard:', fileName);
+
+        // Upload to ImgBB
+        const uploadResult = await uploadImage(file.data, fileName);
+
+        console.log('✅ File uploaded successfully:', uploadResult.url);
+
+        res.json({
+            success: true,
+            url: uploadResult.url,
+            public_id: uploadResult.public_id,
+            fileName: file.name
+        });
+
+    } catch (error) {
+        console.error('❌ Error uploading file:', error);
+        res.status(500).json({ error: 'Failed to upload file' });
+    }
+});
+
 // Respond to a query
 router.post('/respond', async (req, res) => {
-    const { queryId, response, status } = req.body;
-    
+    const { queryId, response, status, fileUrl, fileName } = req.body;
+
     try {
-        await QueryModel.updateQueryResponse(queryId, response, status);
+        // Get query info first
+        const query = await QueryModel.getQueryById(queryId);
+
+        if (!query) {
+            return res.status(404).json({ error: 'Query not found' });
+        }
+
+        // If file is attached, skip the default message and send message with media
+        const skipMessage = !!fileUrl;
+        await QueryModel.updateQueryResponse(queryId, response, status, skipMessage);
+
+        // If file is attached, send it to the user via WhatsApp
+        if (fileUrl) {
+            const { sendMessageWithMedia } = require('../utils/twilioClient');
+            const statusEmoji = status === 'completed' ? '✅' : '❌';
+            const message = `${statusEmoji} Response to your query #${query.query_id}:
+
+${response}
+
+📎 Attached file: ${fileName}
+
+Thank you for using our support system!`;
+
+            await sendMessageWithMedia(query.user_number, message, fileUrl);
+            console.log('✅ Response with file sent to user:', query.user_number);
+        }
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error responding to query:', error);

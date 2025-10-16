@@ -14,4 +14,16 @@ function sendMessage(to, message) {
     });
 }
 
-module.exports = { sendMessage }; 
+function sendMessageWithMedia(to, message, mediaUrl) {
+    console.log('📤 Sending message with media to:', to);
+    console.log('📎 Media URL:', mediaUrl);
+
+    return client.messages.create({
+        from: twilioNumber,
+        to: to,
+        body: message,
+        mediaUrl: [mediaUrl]
+    });
+}
+
+module.exports = { sendMessage, sendMessageWithMedia }; 

@@ -139,7 +139,7 @@ Type "menu" to return to main menu.`);
 
 Please provide the following information (one per line):
 - Employee Number
-- Credit Note Number
+- Invoice Number
 - Amount
 - Reason
 
@@ -147,7 +147,7 @@ Please provide the following information (one per line):
 
 Example:
 EMP001
-CN12345
+INV12345
 1500
 Returned damaged goods
 
@@ -239,12 +239,12 @@ function parseCreditNotesData(userInput) {
     const lines = userInput.split('\n').map(line => line.trim()).filter(line => line);
 
     if (lines.length < 4) {
-        throw new Error('All 4 fields required: Employee Number, Credit Note Number, Amount, Reason');
+        throw new Error('All 4 fields required: Employee Number, Invoice Number, Amount, Reason');
     }
 
     return {
         employee_number: lines[0],
-        credit_note_number: lines[1],
+        invoice_number: lines[1],
         amount: lines[2],
         reason: lines[3]
     };

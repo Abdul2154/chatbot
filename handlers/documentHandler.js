@@ -43,43 +43,57 @@ Type "menu" to return to main menu.`);
             break;
             
         case '2':
-            userSession.documentType = 'grn_statement';
-            userSession.step = 'document_details';
-            sendMessage(senderNumber, `📊 GRN STATEMENT
+            try {
+                const queryId = await QueryModel.createQuery(
+                    senderNumber,
+                    userSession.selectedRegion,
+                    userSession.selectedStore,
+                    'grn_statement',
+                    {
+                        document_type: 'grn_statement',
+                        action: 'send_statement'
+                    }
+                );
 
-📷 You can upload an image if needed.
+                sendMessage(senderNumber, `📊 GRN STATEMENT
 
-Please provide the following information (one per line):
-- Employee Name
-- Store
-- Contact Number
+Query ID: #${queryId}
 
-Example:
-John Smith
-Doornkop
-0123456789
+Your GRN Statement will be sent to you shortly.
 
-Type "menu" to return to main menu.`);
+Thank you!`);
+            } catch (error) {
+                console.error('Error submitting GRN statement request:', error);
+                sendMessage(senderNumber, 'Sorry, there was an error processing your request. Please try again later.');
+            }
+            userSession.step = 'main_menu';
             break;
             
         case '3':
-            userSession.documentType = 'stock_sheet';
-            userSession.step = 'document_details';
-            sendMessage(senderNumber, `📋 STOCK SHEET
+            try {
+                const queryId = await QueryModel.createQuery(
+                    senderNumber,
+                    userSession.selectedRegion,
+                    userSession.selectedStore,
+                    'stock_sheet',
+                    {
+                        document_type: 'stock_sheet',
+                        action: 'notify_head_office'
+                    }
+                );
 
-Head Office will be notified.
+                sendMessage(senderNumber, `📋 STOCK SHEET
 
-Please provide the following information (one per line):
-- Employee Name
-- Store
-- Contact Number
+Query ID: #${queryId}
 
-Example:
-John Smith
-Doornkop
-0123456789
+Head Office has been notified and will send the stock sheet shortly.
 
-Type "menu" to return to main menu.`);
+Thank you!`);
+            } catch (error) {
+                console.error('Error submitting stock sheet request:', error);
+                sendMessage(senderNumber, 'Sorry, there was an error processing your request. Please try again later.');
+            }
+            userSession.step = 'main_menu';
             break;
             
         case '4':
@@ -110,23 +124,30 @@ Thank you!`);
             break;
             
         case '5':
-            userSession.documentType = 'td_statement_report';
-            userSession.step = 'document_details';
-            sendMessage(senderNumber, `📈 TD STATEMENT REPORT
+            try {
+                const queryId = await QueryModel.createQuery(
+                    senderNumber,
+                    userSession.selectedRegion,
+                    userSession.selectedStore,
+                    'td_statement_report',
+                    {
+                        document_type: 'td_statement_report',
+                        action: 'submit_formal_request'
+                    }
+                );
 
-Formal request will be submitted.
+                sendMessage(senderNumber, `📈 TD STATEMENT REPORT
 
-Please provide the following information (one per line):
-- Employee Name
-- Store
-- Contact Number
+Query ID: #${queryId}
 
-Example:
-John Smith
-Doornkop
-0123456789
+Your formal request has been submitted. The TD Statement Report will be sent to you shortly.
 
-Type "menu" to return to main menu.`);
+Thank you!`);
+            } catch (error) {
+                console.error('Error submitting TD statement request:', error);
+                sendMessage(senderNumber, 'Sorry, there was an error processing your request. Please try again later.');
+            }
+            userSession.step = 'main_menu';
             break;
             
         default:
