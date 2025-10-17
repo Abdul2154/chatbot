@@ -83,6 +83,8 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
     if (mediaUrl && mediaContentType && isExcelFile(mediaContentType)) {
         try {
             console.log('📊 Excel file detected, processing...');
+            console.log('📊 Media URL:', mediaUrl);
+            console.log('📊 Content Type:', mediaContentType);
 
             const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_customers`;
             const excelResult = await downloadAndProcessExcelFromTwilio(mediaUrl, fileName);
@@ -121,15 +123,26 @@ Thank you!`;
             return;
 
         } catch (error) {
-            console.error('Error processing Excel file:', error);
-            sendMessage(senderNumber, `❌ Sorry, there was an error processing your Excel file.
+            console.error('❌ Error processing Excel file:', error);
+            console.error('❌ Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+
+            let errorMessage = `❌ Sorry, there was an error processing your Excel file.
+
+Error: ${error.message}
 
 Please make sure:
 - The file is a valid Excel file (.xlsx or .xls)
 - It contains customer data with headers in the first row
 - Common headers: Name, Contact Number, etc.
+- The file is not empty
 
-Please try again or contact support if the issue persists.`);
+Please try again or contact support if the issue persists.`;
+
+            sendMessage(senderNumber, errorMessage);
             return;
         }
     }
