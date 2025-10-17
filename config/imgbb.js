@@ -11,11 +11,13 @@ async function uploadImage(imageBuffer, fileName) {
         const base64Image = imageBuffer.toString('base64');
 
         const formData = new FormData();
-        formData.append('key', IMGBB_API_KEY);
         formData.append('image', base64Image);
         formData.append('name', fileName);
 
-        const response = await axios.post(IMGBB_UPLOAD_URL, formData, {
+        // API key should be in URL query parameter, not form data
+        const uploadUrl = `${IMGBB_UPLOAD_URL}?key=${IMGBB_API_KEY}`;
+
+        const response = await axios.post(uploadUrl, formData, {
             headers: formData.getHeaders(),
             maxContentLength: Infinity,
             maxBodyLength: Infinity
