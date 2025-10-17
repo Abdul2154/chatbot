@@ -928,29 +928,35 @@
                         <div class="details-content">${formattedData}</div>
                     </div>
 
-                    ${query.image_url && query.image_url !== 'null' && query.image_url !== '' ?
-                        (query.query_type === 'bulk_customer_addition' ? `
+                    ${(query.query_type === 'bulk_customer_addition' && query.query_data.file_id) ? `
                         <div class="image-section">
                             <div class="details-title">📄 Excel File</div>
                             <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 20px; border-radius: 10px; border: 2px solid #10b981;">
                                 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
                                     <div style="font-size: 48px;">📊</div>
-                                    <div>
+                                    <div style="flex: 1;">
                                         <div style="font-size: 16px; font-weight: 700; color: #065f46; margin-bottom: 4px;">
                                             Customer Excel Sheet
                                         </div>
-                                        <div style="font-size: 13px; color: #047857;">
-                                            ${query.query_data.total_customers || 0} customers found
+                                        <div style="font-size: 13px; color: #047857; margin-bottom: 4px;">
+                                            📊 ${query.query_data.total_customers || 0} customers found
+                                        </div>
+                                        <div style="font-size: 12px; color: #059669;">
+                                            💾 File Size: ${((query.query_data.file_size || 0) / 1024).toFixed(2)} KB
+                                        </div>
+                                        <div style="font-size: 12px; color: #059669;">
+                                            📁 Stored in: ${query.query_data.stored_in || 'database'}
                                         </div>
                                     </div>
                                 </div>
-                                <a href="${query.image_url}" target="_blank" download
+                                <a href="/admin/download-excel/${query.query_data.file_id}"
+                                   download="${query.query_data.file_name || 'customers'}.xlsx"
                                    style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                                     <span>⬇️</span> Download Excel File
                                 </a>
                             </div>
                         </div>
-                    ` : `
+                    ` : query.image_url && query.image_url !== 'null' && query.image_url !== '' ? `
                         <div class="image-section">
                             <div class="details-title">📷 Attached Image</div>
                             <img src="${query.image_url}" alt="Query Image" class="image-preview"

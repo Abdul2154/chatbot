@@ -99,14 +99,14 @@ Thank you for using our support system!`;
 router.get('/stats', async (req, res) => {
     try {
         const { pool } = require('../config/database');
-        
+
         const [totalResult, pendingResult, completedResult, todayResult] = await Promise.all([
             pool.query('SELECT COUNT(*) as count FROM queries'),
             pool.query('SELECT COUNT(*) as count FROM queries WHERE status = $1', ['pending']),
             pool.query('SELECT COUNT(*) as count FROM queries WHERE status = $1', ['completed']),
             pool.query('SELECT COUNT(*) as count FROM queries WHERE DATE(created_at) = CURRENT_DATE')
         ]);
-        
+
         res.json({
             total: parseInt(totalResult.rows[0].count),
             pending: parseInt(pendingResult.rows[0].count),
@@ -116,6 +116,44 @@ router.get('/stats', async (req, res) => {
     } catch (error) {
         console.error('Error fetching stats:', error);
         res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+});
+
+// Download Excel file from database
+router.get('/download-excel/:fileId', async (req, res) => {
+    try {
+        const { fileId } = req.params;
+        const { pool } = require('../config/database');
+
+        console.log('📥 Downloading Excel file with ID:', fileId);
+
+        // Retrieve file from database
+        const result = await pool.query(
+            'SELECT file_name, file_data, file_size FROM excel_files WHERE id = $1',
+            [fileId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        const { file_name, file_data, file_size } = result.rows[0];
+
+        console.log('✅ File found:', file_name, 'Size:', file_size, 'bytes');
+
+        // Set appropriate headers for Excel download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${file_name}.xlsx"`);
+        res.setHeader('Content-Length', file_size);
+
+        // Send the file buffer
+        res.send(file_data);
+
+        console.log('✅ Excel file downloaded successfully');
+
+    } catch (error) {
+        console.error('❌ Error downloading Excel file:', error);
+        res.status(500).json({ error: 'Failed to download file' });
     }
 });
 
