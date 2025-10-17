@@ -1,9 +1,6 @@
 const axios = require('axios');
 const XLSX = require('xlsx');
-const FormData = require('form-data');
-
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
-const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
+const { pool } = require('./database');
 
 /**
  * Parse Excel file and extract customer data
@@ -91,47 +88,59 @@ function parseExcelData(buffer) {
 }
 
 /**
- * Upload Excel file to ImgBB (supports various file types)
+ * Store Excel file in database
  */
-async function uploadExcelFile(fileBuffer, fileName) {
+async function storeExcelFileInDatabase(fileBuffer, fileName, userNumber) {
     try {
-        console.log('📤 Uploading Excel file to ImgBB:', fileName);
+        console.log('💾 Storing Excel file in database:', fileName);
 
-        const base64File = fileBuffer.toString('base64');
+        // Create table if it doesn't exist
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS excel_files (
+                id SERIAL PRIMARY KEY,
+                file_name VARCHAR(255) NOT NULL,
+                file_data BYTEA NOT NULL,
+                file_size INTEGER NOT NULL,
+                user_number VARCHAR(50),
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        const formData = new FormData();
-        formData.append('key', IMGBB_API_KEY);
-        formData.append('image', base64File); // ImgBB uses 'image' param even for other files
-        formData.append('name', fileName);
+        // Insert file into database
+        const result = await pool.query(
+            `INSERT INTO excel_files (file_name, file_data, file_size, user_number)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id`,
+            [fileName, fileBuffer, fileBuffer.length, userNumber]
+        );
 
-        const response = await axios.post(IMGBB_UPLOAD_URL, formData, {
-            headers: formData.getHeaders(),
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
-        });
+        const fileId = result.rows[0].id;
 
-        if (response.data.success) {
-            const fileData = response.data.data;
-            console.log('✅ Excel file uploaded successfully:', fileData.url);
+        console.log('✅ Excel file stored in database with ID:', fileId);
 
-            return {
-                url: fileData.url,
-                public_id: fileData.id,
-                delete_url: fileData.delete_url
-            };
-        } else {
-            throw new Error('ImgBB upload failed');
-        }
+        return {
+            file_id: fileId,
+            file_name: fileName,
+            file_size: fileBuffer.length,
+            stored_in: 'database'
+        };
+
     } catch (error) {
-        console.error('❌ Error uploading Excel file to ImgBB:', error.response?.data || error.message);
-        throw error;
+        console.error('❌ Error storing Excel file in database:', error.message);
+        // Return null values but don't fail the entire process
+        return {
+            file_id: null,
+            file_name: fileName,
+            error: error.message,
+            stored_in: 'none'
+        };
     }
 }
 
 /**
  * Download Excel file from Twilio and process it
  */
-async function downloadAndProcessExcelFromTwilio(mediaUrl, fileName) {
+async function downloadAndProcessExcelFromTwilio(mediaUrl, fileName, userNumber) {
     try {
         console.log('📥 Downloading Excel file from Twilio:', mediaUrl);
         console.log('📥 Using TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'SET' : 'NOT SET');
@@ -176,11 +185,14 @@ async function downloadAndProcessExcelFromTwilio(mediaUrl, fileName) {
         // Parse Excel data
         const excelData = parseExcelData(fileBuffer);
 
-        // Upload to ImgBB for storage
-        const uploadResult = await uploadExcelFile(fileBuffer, fileName);
+        // Store file in database
+        const storageResult = await storeExcelFileInDatabase(fileBuffer, fileName, userNumber);
 
         return {
-            ...uploadResult,
+            file_id: storageResult.file_id,
+            file_name: storageResult.file_name,
+            file_size: storageResult.file_size,
+            stored_in: storageResult.stored_in,
             customerData: excelData
         };
 
@@ -216,6 +228,6 @@ function isExcelFile(contentType) {
 module.exports = {
     downloadAndProcessExcelFromTwilio,
     parseExcelData,
-    uploadExcelFile,
+    storeExcelFileInDatabase,
     isExcelFile
 };

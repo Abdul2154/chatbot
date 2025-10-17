@@ -87,7 +87,7 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
             console.log('📊 Content Type:', mediaContentType);
 
             const fileName = `${Date.now()}_${senderNumber.replace('whatsapp:', '')}_customers`;
-            const excelResult = await downloadAndProcessExcelFromTwilio(mediaUrl, fileName);
+            const excelResult = await downloadAndProcessExcelFromTwilio(mediaUrl, fileName, senderNumber);
 
             // Create a query entry for bulk customer addition
             const queryId = await QueryModel.createQuery(
@@ -100,20 +100,24 @@ async function handleMessage(message, senderNumber, mediaUrl = null, mediaConten
                     total_customers: excelResult.customerData.totalRecords,
                     customers: excelResult.customerData.customers,
                     headers: excelResult.customerData.headers,
-                    file_name: fileName
+                    file_name: fileName,
+                    file_id: excelResult.file_id,
+                    file_size: excelResult.file_size,
+                    stored_in: excelResult.stored_in
                 },
-                excelResult.url,
-                excelResult.public_id
+                null, // No URL since stored in database
+                excelResult.file_id // Use file_id as reference
             );
 
-            const confirmationMessage = `✅ Excel file received and processed successfully!
+            let confirmationMessage = `✅ Excel file received and processed successfully!
 
 Query ID: #${queryId}
 📊 Total Customers Found: ${excelResult.customerData.totalRecords}
+💾 File Size: ${(excelResult.file_size / 1024).toFixed(2)} KB
 
 Your bulk customer addition request has been submitted. Our team will review and add these customers to the system.
 
-📄 The Excel file has been saved and can be downloaded from the admin dashboard.
+📄 The Excel file and customer data have been securely saved in the database.
 
 Thank you!`;
 
