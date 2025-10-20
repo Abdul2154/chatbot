@@ -45,7 +45,12 @@ Details: ${JSON.stringify(queryData, null, 2)}`;
                 await sendMessage(teamNumber.trim(), message);
                 console.log(`✅ Team notification sent to: ${teamNumber}`);
             } catch (error) {
-                console.error('Error notifying team member:', teamNumber, error);
+                console.error(`❌ Error notifying team member ${teamNumber}:`, {
+                    queryId,
+                    error: error.message,
+                    code: error.code,
+                    status: error.status
+                });
             }
         }
     }
@@ -118,8 +123,20 @@ ${response}
 
 Thank you for using our support system!`;
 
-                await sendMessage(query.user_number, userMessage);
-                console.log(`✅ Response sent to user: ${query.user_number}`);
+                try {
+                    await sendMessage(query.user_number, userMessage);
+                    console.log(`✅ Response sent to user: ${query.user_number}`);
+                } catch (twilioError) {
+                    // Log the error but don't fail the entire operation
+                    console.error(`❌ Failed to send message to user ${query.user_number} after retries:`, {
+                        queryId: query.query_id,
+                        error: twilioError.message,
+                        code: twilioError.code,
+                        status: twilioError.status
+                    });
+                    // Query was still updated successfully, just message failed
+                    console.warn(`⚠️ Query ${query.query_id} was updated but user notification failed`);
+                }
             }
 
             return result;

@@ -84,8 +84,22 @@ ${response}
 
 Thank you for using our support system!`;
 
-            await sendMessageWithMedia(query.user_number, message, fileUrl);
-            console.log('✅ Response with file sent to user:', query.user_number);
+            try {
+                await sendMessageWithMedia(query.user_number, message, fileUrl);
+                console.log('✅ Response with file sent to user:', query.user_number);
+            } catch (twilioError) {
+                console.error(`❌ Failed to send message with media to user ${query.user_number}:`, {
+                    queryId: query.query_id,
+                    error: twilioError.message,
+                    code: twilioError.code,
+                    status: twilioError.status
+                });
+                // Return partial success - query was updated but message failed
+                return res.json({
+                    success: true,
+                    warning: 'Query updated but message delivery failed. Please try resending manually.'
+                });
+            }
         }
 
         res.json({ success: true });
