@@ -36,13 +36,20 @@ async function saveSession(userNumber, sessionData) {
 }
 async function handleMessage(message, senderNumber, mediaUrl = null, mediaContentType = null) {
     console.log('🔄 Processing message:', message, 'from:', senderNumber);
+    console.log('📊 Message details:', {
+        message: message,
+        messageType: typeof message,
+        messageLength: message ? message.length : 0,
+        trimmed: message ? message.trim() : '',
+        lowercased: message ? message.toLowerCase().trim() : ''
+    });
 
     if (mediaUrl) {
         console.log('📷 Image received:', mediaUrl);
     }
 
     // Greeting detection - reset to start
-    const greetings = ['hello', 'hi', 'hey', 'start', 'hola', 'greetings'];
+    const greetings = ['hello', 'hi', 'hey', 'start', 'hola', 'greetings', 'join'];
     if (message && greetings.includes(message.toLowerCase().trim())) {
         console.log('👋 Greeting detected, starting fresh session');
         await pool.query('DELETE FROM user_sessions WHERE user_number = $1', [senderNumber]);

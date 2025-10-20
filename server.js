@@ -34,22 +34,30 @@ app.get('/health', (req, res) => {
 
 // Webhook endpoint for WhatsApp with image support
 app.post('/webhook', async (req, res) => {
+    console.log('🌐 Webhook received - Full request body:', JSON.stringify(req.body, null, 2));
+
     const incomingMessage = req.body.Body || '';
     const senderNumber = req.body.From;
     const mediaUrl = req.body.MediaUrl0;
     const mediaContentType = req.body.MediaContentType0;
-    
-    console.log(`📱 Received message: ${incomingMessage} from ${senderNumber}`);
-    
+
+    console.log(`📱 Received message: "${incomingMessage}" from ${senderNumber}`);
+    console.log('📊 Parsed values:', {
+        Body: req.body.Body,
+        From: senderNumber,
+        HasMedia: !!mediaUrl
+    });
+
     if (mediaUrl) {
         console.log(`📷 Image received: ${mediaUrl}, Type: ${mediaContentType}`);
     }
-    
+
     try {
         await messageHandler.handleMessage(incomingMessage, senderNumber, mediaUrl, mediaContentType);
         res.sendStatus(200);
     } catch (error) {
         console.error('❌ Error handling message:', error);
+        console.error('❌ Error stack:', error.stack);
         res.sendStatus(500);
     }
 });
